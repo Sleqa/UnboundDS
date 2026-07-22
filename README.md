@@ -24,31 +24,14 @@ support → visual polish).
 ./gradlew assembleRelease # release build
 ```
 
-`assembleRelease` falls back to debug signing when no release keystore is
-configured (fine for local testing). CI signs with a real keystore kept out
-of the repo — see below.
-
-### CI release signing setup (one-time)
-
-Obtainium needs release APKs signed with the *same* key across builds, or it
-can't install an update over an existing install. Generate a keystore once
-and store it as GitHub Actions secrets (never commit it):
-
-```
-keytool -genkeypair -v -keystore release.keystore -alias unboundds \
-  -keyalg RSA -keysize 2048 -validity 36500
-base64 -w0 release.keystore   # copy this value
-```
-
-Add these repo secrets (Settings → Secrets and variables → Actions):
-
-- `RELEASE_KEYSTORE_BASE64` — output of the `base64` command above
-- `RELEASE_KEYSTORE_PASSWORD`
-- `RELEASE_KEY_ALIAS` (`unboundds` if you used the command above)
-- `RELEASE_KEY_PASSWORD`
-
-Without these secrets, CI still builds and releases a (debug-signed) APK —
-it just won't support seamless in-place updates until the secrets are set.
+`assembleRelease` is signed with the keystore committed at
+`keystore/release.keystore`. It's intentionally not a secret — this is a
+personal, read-only companion app with nothing sensitive in it. The only
+reason it's fixed is so Obtainium/sideloaded updates install in place
+instead of forcing an uninstall (which a changing signature would require).
+If you ever want a private key instead, override it with Gradle properties
+(`-PreleaseStoreFile=... -PreleaseStorePassword=...` etc.) without touching
+the committed defaults.
 
 ## Using with RetroArch
 

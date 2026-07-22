@@ -4,13 +4,6 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-// Release signing comes from a keystore decoded at CI time from a GitHub Actions
-// secret (see .github/workflows/release.yml) — never committed to the repo.
-// Falls back to debug signing so `assembleRelease` still works for local testing
-// without that secret; such builds just won't share a signature with CI releases.
-val releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
-val hasReleaseSigning = !releaseKeystorePath.isNullOrBlank()
-
 android {
     namespace = "com.unboundds.companion"
     compileSdk = 35
@@ -23,25 +16,24 @@ android {
         versionName = System.getenv("APP_VERSION_NAME") ?: "0.1.0"
     }
 
+    // A fixed signing key so Obtainium/sideload updates install in place instead of
+    // forcing an uninstall. The committed keystore is NOT secret on a public repo —
+    // it exists only to keep the signature stable across CI builds for this personal
+    // project. Credentials can be overridden via Gradle properties if you later swap
+    // in a private keystore.
     signingConfigs {
-        if (hasReleaseSigning) {
-            create("release") {
-                storeFile = file(releaseKeystorePath!!)
-                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
-                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
-            }
+        create("release") {
+            storeFile = rootProject.file(project.findProperty("releaseStoreFile") as? String ?: "keystore/release.keystore")
+            storePassword = project.findProperty("releaseStorePassword") as? String ?: "unboundds-release"
+            keyAlias = project.findProperty("releaseKeyAlias") as? String ?: "unboundds"
+            keyPassword = project.findProperty("releaseKeyPassword") as? String ?: "unboundds-release"
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
