@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.unboundds.companion.memory.DiffScanner
 import com.unboundds.companion.memory.MemoryRegion
@@ -38,6 +41,7 @@ fun DiffScannerScreen() {
     val client = remember { RetroArchClient() }
     val scanner = remember { DiffScanner(client) }
     val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
 
     var selectedRegion by remember { mutableStateOf(MemoryRegions.EWRAM) }
     var status by remember { mutableStateOf("No snapshot yet") }
@@ -51,6 +55,10 @@ fun DiffScannerScreen() {
         noiseOffsets = emptySet()
         diffs = emptyList()
         status = "Region set to ${region.name} (0x${region.startAddress.toString(16)}, ${region.length}B)"
+    }
+
+    fun diffsAsText(): String = diffs.joinToString("\n") { d ->
+        "0x${d.address.toString(16)} (${d.before.size}B): ${d.before.toHex()} -> ${d.after.toHex()}"
     }
 
     Column(
@@ -99,6 +107,19 @@ fun DiffScannerScreen() {
                 },
             ) {
                 Text("Use SaveBlock1")
+            }
+        }
+
+        Row(modifier = Modifier.padding(top = 8.dp)) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = "Reading player overworld object…"
+                        resetRegion(MemoryRegion("PlayerOW", 0x02036E38, 36))
+                    }
+                },
+            ) {
+                Text("Use player object")
             }
         }
 
@@ -167,20 +188,30 @@ fun DiffScannerScreen() {
                         }
                     }
                 },
+                modifier = Modifier.padding(end = 8.dp),
             ) {
                 Text("Compare")
+            }
+            Button(
+                onClick = { clipboard.setText(AnnotatedString(diffsAsText())) },
+            ) {
+                Text("Copy results")
             }
         }
 
         Text(status, modifier = Modifier.padding(top = 8.dp))
 
-        diffs.forEach { d ->
-            Text(
-                "0x${d.address.toString(16)} (${d.before.size}B): " +
-                    "${d.before.toHex()} → ${d.after.toHex()}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+        SelectionContainer {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                diffs.forEach { d ->
+                    Text(
+                        "0x${d.address.toString(16)} (${d.before.size}B): " +
+                            "${d.before.toHex()} → ${d.after.toHex()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         }
     }
 }

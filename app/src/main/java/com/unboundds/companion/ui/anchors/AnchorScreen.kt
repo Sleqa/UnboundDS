@@ -1,9 +1,11 @@
 package com.unboundds.companion.ui.anchors
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -15,7 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.memory.PartyLayout
@@ -39,6 +43,7 @@ fun AnchorScreen() {
     val client = remember { RetroArchClient() }
     val map = remember { MemoryMap.load(context) }
     val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
 
     var lines by remember { mutableStateOf(listOf("Map: Unbound ${map.unboundVersion} (${map.baseGame})")) }
 
@@ -159,9 +164,19 @@ fun AnchorScreen() {
             Text("Read all anchors")
         }
 
-        Column(modifier = Modifier.padding(top = 12.dp)) {
-            lines.forEach { line ->
-                Text(line, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp))
+        Row(modifier = Modifier.padding(top = 8.dp)) {
+            Button(
+                onClick = { clipboard.setText(AnnotatedString(lines.joinToString("\n"))) },
+            ) {
+                Text("Copy results")
+            }
+        }
+
+        SelectionContainer {
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                lines.forEach { line ->
+                    Text(line, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp))
+                }
             }
         }
     }
