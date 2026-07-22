@@ -55,21 +55,57 @@ class DiffScanner(private val client: RetroArchClient) {
     /** Groups changed bytes into contiguous runs so e.g. a 4-byte value shows as one diff, not four. */
     fun diff(before: ByteArray, after: ByteArray, baseAddress: Int): List<Diff> {
         require(before.size == after.size) { "Snapshot size mismatch — re-scan both." }
+        val changed = changedOffsets(before, after)
+        return group(changed, before, after, baseAddress)
+    }
+
+    /** Offsets (into the snapshot arrays) whose byte differs between [before] and [after]. */
+    fun changedOffsets(before: ByteArray, after: ByteArray): Set<Int> {
+        require(before.size == after.size) { "Snapshot size mismatch — re-scan both." }
+        val out = mutableSetOf<Int>()
+        for (i in before.indices) if (before[i] != after[i]) out += i
+        return out
+    }
+
+    /**
+     * Like [diff], but excludes any offset in [noiseOffsets] — addresses that were
+     * already found to change with no player action (RNG, animation/frame counters,
+     * audio state, etc). Massively cuts down real diffs on a large region like EWRAM.
+     */
+    fun diffExcludingNoise(
+        before: ByteArray,
+        after: ByteArray,
+        baseAddress: Int,
+        noiseOffsets: Set<Int>,
+    ): List<Diff> {
+        val changed = changedOffsets(before, after) - noiseOffsets
+        return group(changed, before, after, baseAddress)
+    }
+
+    private fun group(offsets: Set<Int>, before: ByteArray, after: ByteArray, baseAddress: Int): List<Diff> {
+        if (offsets.isEmpty()) return emptyList()
+        val sorted = offsets.sorted()
         val diffs = mutableListOf<Diff>()
-        var i = 0
-        while (i < before.size) {
-            if (before[i] != after[i]) {
-                val start = i
-                while (i < before.size && before[i] != after[i]) i++
-                diffs += Diff(
-                    address = baseAddress + start,
-                    before = before.copyOfRange(start, i),
-                    after = after.copyOfRange(start, i),
-                )
+        var runStart = sorted[0]
+        var runEnd = sorted[0]
+        for (offset in sorted.drop(1)) {
+            if (offset == runEnd + 1) {
+                runEnd = offset
             } else {
-                i++
+                diffs += Diff(
+                    address = baseAddress + runStart,
+                    before = before.copyOfRange(runStart, runEnd + 1),
+                    after = after.copyOfRange(runStart, runEnd + 1),
+                )
+                runStart = offset
+                runEnd = offset
             }
         }
+        diffs += Diff(
+            address = baseAddress + runStart,
+            before = before.copyOfRange(runStart, runEnd + 1),
+            after = after.copyOfRange(runStart, runEnd + 1),
+        )
         return diffs
     }
 }

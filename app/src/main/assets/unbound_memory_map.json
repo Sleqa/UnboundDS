@@ -49,8 +49,8 @@
   "anchors": [
     { "name": "playerName", "address": "0x020245CC", "size": 8, "confidence": "firered-anchor", "kind": "text",
       "note": "Read as all zeros on real Unbound hardware 2026-07-22 — likely shifted, needs re-discovery via diff scanner." },
-    { "name": "rivalName", "address": "0x02028F78", "size": 8, "confidence": "firered-anchor", "kind": "text",
-      "note": "Decodes to a plausible name on real Unbound hardware 2026-07-22 (CC ED D5 E2 FF -> \"Ryan\") — likely correct, needs player confirmation." },
+    { "name": "rivalName", "address": "0x02028F78", "size": 8, "confidence": "unbound-verified", "kind": "text",
+      "note": "Confirmed 2026-07-22: decodes to \"Ryan\", matches the player's real rival name." },
     { "name": "prevMapBank", "address": "0x02031DB4", "size": 1, "confidence": "firered-anchor" },
     { "name": "prevMapNumber", "address": "0x02031DB5", "size": 1, "confidence": "firered-anchor" },
     { "name": "entryWarpId", "address": "0x02031DB6", "size": 1, "confidence": "firered-anchor" },

@@ -21,7 +21,11 @@ import com.unboundds.companion.memory.DiffScanner
 import com.unboundds.companion.memory.MemoryRegion
 import com.unboundds.companion.memory.MemoryRegions
 import com.unboundds.companion.network.RetroArchClient
+import com.unboundds.companion.network.parseReadCoreMemoryResponse
 import kotlinx.coroutines.launch
+
+private const val SAVE_BLOCK1_PTR_ADDRESS = 0x03005008
+private const val SAVE_BLOCK1_SCAN_LENGTH = 0x2000 // 8KB — generous margin over vanilla FireRed's ~3.9KB struct
 
 /**
  * Snapshot a memory region, perform one controlled in-game action, then
@@ -38,7 +42,16 @@ fun DiffScannerScreen() {
     var selectedRegion by remember { mutableStateOf(MemoryRegions.EWRAM) }
     var status by remember { mutableStateOf("No snapshot yet") }
     var baseline by remember { mutableStateOf<ByteArray?>(null) }
+    var noiseOffsets by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var diffs by remember { mutableStateOf<List<DiffScanner.Diff>>(emptyList()) }
+
+    fun resetRegion(region: MemoryRegion) {
+        selectedRegion = region
+        baseline = null
+        noiseOffsets = emptySet()
+        diffs = emptyList()
+        status = "Region set to ${region.name} (0x${region.startAddress.toString(16)}, ${region.length}B)"
+    }
 
     Column(
         modifier = Modifier
@@ -49,23 +62,65 @@ fun DiffScannerScreen() {
         Text("Diff scanner", style = MaterialTheme.typography.headlineSmall)
         Text(
             "Snapshot a region, make one change in-game (e.g. spend money, take a step), " +
-                "then compare to see which bytes changed.",
+                "then compare to see which bytes changed. If EWRAM gives too many diffs, " +
+                "calibrate noise first, or scope down to SaveBlock1.",
             style = MaterialTheme.typography.bodySmall,
         )
 
         Row(modifier = Modifier.padding(top = 12.dp)) {
             MemoryRegions.all.forEach { region ->
                 Button(
-                    onClick = {
-                        selectedRegion = region
-                        baseline = null
-                        diffs = emptyList()
-                        status = "Region set to ${region.name}"
-                    },
+                    onClick = { resetRegion(region) },
                     modifier = Modifier.padding(end = 8.dp),
                 ) {
                     Text(if (region == selectedRegion) "[${region.name}]" else region.name)
                 }
+            }
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = "Reading gSaveBlock1Ptr…"
+                        when (val r = client.readCoreMemory(SAVE_BLOCK1_PTR_ADDRESS, 4)) {
+                            is RetroArchClient.Result.Success -> {
+                                val bytes = parseReadCoreMemoryResponse(r.response)
+                                if (bytes == null || bytes.size < 4) {
+                                    status = "Pointer read rejected — is a game loaded?"
+                                } else {
+                                    val ptr = (bytes[0].toInt() and 0xFF) or
+                                        ((bytes[1].toInt() and 0xFF) shl 8) or
+                                        ((bytes[2].toInt() and 0xFF) shl 16) or
+                                        ((bytes[3].toInt() and 0xFF) shl 24)
+                                    resetRegion(MemoryRegion("SaveBlock1", ptr, SAVE_BLOCK1_SCAN_LENGTH))
+                                }
+                            }
+                            is RetroArchClient.Result.Failure -> status = "Error: ${r.message}"
+                        }
+                    }
+                },
+            ) {
+                Text("Use SaveBlock1")
+            }
+        }
+
+        Row(modifier = Modifier.padding(top = 12.dp)) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = "Calibrating noise on ${selectedRegion.name}…"
+                        val first = scanner.readRegion(selectedRegion)
+                        val second = scanner.readRegion(selectedRegion)
+                        if (first is DiffScanner.ScanResult.Success && second is DiffScanner.ScanResult.Success) {
+                            noiseOffsets = scanner.changedOffsets(first.bytes, second.bytes)
+                            status = "Noise calibrated: ${noiseOffsets.size} byte(s) change with no action — " +
+                                "these will be filtered from future comparisons."
+                        } else {
+                            status = "Calibration failed — check connection"
+                        }
+                    }
+                },
+                modifier = Modifier.padding(end = 8.dp),
+            ) {
+                Text("Calibrate noise")
             }
         }
 
@@ -99,8 +154,14 @@ fun DiffScannerScreen() {
                         status = "Re-scanning…"
                         when (val result = scanner.readRegion(selectedRegion)) {
                             is DiffScanner.ScanResult.Success -> {
-                                diffs = scanner.diff(base, result.bytes, selectedRegion.startAddress)
-                                status = "${diffs.size} changed byte-range(s) found"
+                                diffs = scanner.diffExcludingNoise(
+                                    base,
+                                    result.bytes,
+                                    selectedRegion.startAddress,
+                                    noiseOffsets,
+                                )
+                                status = "${diffs.size} changed byte-range(s) found" +
+                                    if (noiseOffsets.isNotEmpty()) " (noise filtered)" else ""
                             }
                             is DiffScanner.ScanResult.Failure -> status = "Error: ${result.message}"
                         }
