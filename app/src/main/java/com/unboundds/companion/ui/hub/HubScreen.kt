@@ -60,7 +60,7 @@ import java.util.Calendar
 private const val POLL_INTERVAL_MS = 1000L
 
 private val HubBackground = Color(0xFF000000)
-private val HubPanel = Color(0xFFFCFCEF) // map interior stays cream for now
+private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
 private val HubTextLight = Color(0xFFF0EEDA)
 
 data class HubMon(val speciesId: Int, val level: Int)
@@ -118,7 +118,7 @@ fun HubScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(HubBackground)
-            .padding(10.dp),
+            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 3.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -130,7 +130,7 @@ fun HubScreen() {
             BatteryIcon(percent = battery)
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         Row(modifier = Modifier.weight(1f)) {
             Box(
@@ -170,7 +170,9 @@ fun HubScreen() {
 
 @Composable
 private fun PartyColumn(mons: List<HubMon>, phase: Int, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+    // Half height so each of the 3 slots matches the original 1x6 layout's per-slot
+    // size (fullHeight / 6) instead of stretching to fill the whole column.
+    Column(modifier = modifier.fillMaxHeight(0.5f), horizontalAlignment = Alignment.CenterHorizontally) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) }

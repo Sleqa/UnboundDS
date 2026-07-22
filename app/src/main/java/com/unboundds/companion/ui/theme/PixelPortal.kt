@@ -1,17 +1,17 @@
 package com.unboundds.companion.ui.theme
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.lerp
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.ceil
@@ -22,36 +22,46 @@ import kotlin.math.sqrt
  * Chunky-pixel animated "portal" fill, styled after the swirling purple O in
  * Pokemon Unbound's title logo. Quantized to a coarse cell grid and a
  * discrete palette-cycling phase (whole steps, like a GBA palette animation)
- * so it reads as pixel art rather than a smooth gradient. Deliberately a
- * narrow band of one purple hue -- no near-black/near-white -- per feedback
- * that a wider range read as "overpowering".
+ * so it reads as pixel art rather than a smooth gradient. One narrow purple
+ * hue band -- no near-black/near-white -- per feedback that a wider range
+ * read as overpowering.
  */
 
-private val PortalPalette = listOf(
-    Color(0xFF7A30C0),
-    Color(0xFF6E2AB2),
-    Color(0xFF6226A4),
-    Color(0xFF561F96),
-    Color(0xFF6226A4),
-    Color(0xFF6E2AB2),
-)
+private const val PORTAL_STEPS = 30
+private const val PORTAL_CYCLE_MS = 1400
+
+private val PortalLight = Color(0xFF7A30C0)
+private val PortalDark = Color(0xFF561F96)
+
+// Triangle wave 0->1->0 across the cycle, sampled into PORTAL_STEPS discrete colors
+// once (not recomputed per-frame).
+private val PortalPalette: List<Color> = List(PORTAL_STEPS) { i ->
+    val half = PORTAL_STEPS / 2f
+    val t = if (i < half) i / half else (PORTAL_STEPS - i) / half
+    lerp(PortalLight, PortalDark, t)
+}
 
 val GoldOutline = Color(0xFFC8A028)
 val GoldHighlight = Color(0xFFF0D888)
 
+/**
+ * Drives the portal phase on its own fixed-interval ticker instead of a
+ * continuous Animatable -- that previous approach recomposed every consumer
+ * on every display frame (e.g. 60-90x/sec) even though only PORTAL_STEPS
+ * distinct visual states exist per cycle. This only triggers a recomposition
+ * exactly PORTAL_STEPS times per PORTAL_CYCLE_MS.
+ */
 @Composable
 fun portalPhase(): Int {
-    val transition = rememberInfiniteTransition(label = "portal")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = PortalPalette.size.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "phase",
-    )
-    return phase.toInt()
+    var phase by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        val stepDelayMs = (PORTAL_CYCLE_MS / PORTAL_STEPS).toLong()
+        while (true) {
+            delay(stepDelayMs)
+            phase = (phase + 1) % PORTAL_STEPS
+        }
+    }
+    return phase
 }
 
 private fun swirlColor(dx: Float, dy: Float, cell: Float, phase: Int): Color {
