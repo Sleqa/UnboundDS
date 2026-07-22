@@ -55,11 +55,12 @@ class Gen3DecryptTest {
 
         val substructs = arrayOf(growth, attacks, evs, misc)
 
-        // Determine order for this personality using the same table as Gen3Decrypt.
+        // order[identity] = raw block position for that identity (direct lookup, matches
+        // Gen3Decrypt's decode direction) -- place each substruct at raw position order[i].
         val order = SUBSTRUCTURE_ORDER_FOR_TEST[(personality % 24).toInt()]
         val plainBlock = ByteArray(48)
-        for (pos in 0 until 4) {
-            substructs[order[pos]].copyInto(plainBlock, pos * 12)
+        for (i in 0 until 4) {
+            substructs[i].copyInto(plainBlock, order[i] * 12)
         }
 
         // Checksum = sum of all 24 u16 words of the plaintext block.

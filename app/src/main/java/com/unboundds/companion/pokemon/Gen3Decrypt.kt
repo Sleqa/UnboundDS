@@ -70,11 +70,16 @@ object Gen3Decrypt {
         for (i in 0 until 24) sum += decrypted.u16(i * 2)
         val checksumValid = (sum and 0xFFFF) == storedChecksum
 
+        // order[identity] = which raw (still-shuffled) 12-byte block position holds that
+        // canonical substructure -- a DIRECT lookup, not an inverse/search. Confirmed against
+        // PKHeX's Decrypt3 (PokeCrypto.cs): canonical[i] = raw[order[i]], via its in-place
+        // swap-based Shuffle3. (A previous version of this code inverted the table, which
+        // only produced correct results on rows whose sub-permutation was a self-inverse
+        // 2-swap -- exactly matching the observed bug where species/growth kept decoding
+        // right while Attacks/EVs/Misc were scrambled on non-involutive rows.)
         val order = SUBSTRUCTURE_ORDER[(personality % 24).toInt()]
-        val offsetOf = IntArray(4)
-        for (pos in 0 until 4) offsetOf[order[pos]] = pos * 12
-        val growth = offsetOf[0]
-        val attacks = offsetOf[1]
+        val growth = order[0] * 12
+        val attacks = order[1] * 12
 
         return Decoded(
             nickname = nickname,
