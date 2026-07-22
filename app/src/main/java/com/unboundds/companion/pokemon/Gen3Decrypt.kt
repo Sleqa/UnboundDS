@@ -1,43 +1,28 @@
 package com.unboundds.companion.pokemon
 
 /**
- * Decrypts the 48-byte encrypted data block (offset 0x20-0x4F) of a Gen 3
- * Pokemon struct to extract species, held item, experience, and moves.
+ * Reads species/item/experience/moves/nickname/OT-name from a party Pokemon
+ * struct at 0x02024284 in Pokemon Unbound.
  *
- * The block is split into 4 x 12-byte substructures (Growth/Attacks/EVs/Misc)
- * whose ORDER depends on `personality % 24`, then each of the block's 12
- * 32-bit words is XORed with `personality XOR otId`.
+ * This is NOT standard Gen 3 encryption. Vanilla FireRed encrypts+shuffles the
+ * 48-byte substructure block at 0x20-0x4F (personality-dependent order, XOR key
+ * = personality^otId). We implemented that in full, verified the shuffle table
+ * against PKHeX's real source, and it STILL produced garbage species/moves.
  *
- * checksumValid mirrors vanilla FireRed's own struct checksum (offset 0x1C).
- * On Pokemon Unbound specifically it reads FALSE even when species/nickname/
- * moves are independently confirmed correct against real hardware (verified
- * 2026-07-22 across a full party + enemy team) -- Unbound's engine appears to
- * compute the checksum differently (likely folding in data for its custom
- * Mega Evolution/mission systems) without changing the substructure layout.
- * Treat checksumValid as informational on Unbound, not a correctness gate.
+ * Root cause, confirmed on real hardware 2026-07-22: species at raw offset 0x20
+ * (no decryption, no reordering) is correct for every party member regardless
+ * of personality value. CFRU (Unbound's engine base) has its own `struct
+ * Pokemon` type for the live in-RAM party -- distinct from the save-file
+ * `struct BoxPokemon` -- with species/item/experience/moves/pp stored in
+ * PLAINTEXT at the classic fixed offsets (Growth always at 0x20, Attacks
+ * always at 0x2C, etc), never encrypted or shuffled. Our "decryption" was
+ * corrupting already-plain data by XORing it with a key that doesn't apply
+ * here. This file just reads the fields directly.
  */
 object Gen3Decrypt {
-    // Row i = substructure order for personality % 24 == i.
-    // Values are substructure identities (0=Growth 1=Attacks 2=EVs 3=Misc) in
-    // position order, e.g. row 0 = [0,1,2,3] means position0=Growth, position1=Attacks...
-    // Sourced from PKHeX's BlockPosition table (PKHeX.Core/PKM/Util/PokeCrypto.cs,
-    // kwsch/PKHeX) 2026-07-22 -- a previous hand-transcribed version of this table had
-    // several rows wrong (rows 8-13, 15, 17-20, 22 in particular), which correctly
-    // decoded species/nickname (position 0 = Growth was still right for many personality
-    // values) while corrupting moves/PP for Pokemon whose personality%24 hit a wrong row.
-    private val SUBSTRUCTURE_ORDER: Array<IntArray> = arrayOf(
-        intArrayOf(0, 1, 2, 3), intArrayOf(0, 1, 3, 2), intArrayOf(0, 2, 1, 3), intArrayOf(0, 3, 1, 2),
-        intArrayOf(0, 2, 3, 1), intArrayOf(0, 3, 2, 1), intArrayOf(1, 0, 2, 3), intArrayOf(1, 0, 3, 2),
-        intArrayOf(2, 0, 1, 3), intArrayOf(3, 0, 1, 2), intArrayOf(2, 0, 3, 1), intArrayOf(3, 0, 2, 1),
-        intArrayOf(1, 2, 0, 3), intArrayOf(1, 3, 0, 2), intArrayOf(2, 1, 0, 3), intArrayOf(3, 1, 0, 2),
-        intArrayOf(2, 3, 0, 1), intArrayOf(3, 2, 0, 1), intArrayOf(1, 2, 3, 0), intArrayOf(1, 3, 2, 0),
-        intArrayOf(2, 1, 3, 0), intArrayOf(3, 1, 2, 0), intArrayOf(2, 3, 1, 0), intArrayOf(3, 2, 1, 0),
-    )
-
     data class Decoded(
         val nickname: String,
         val otName: String,
-        val checksumValid: Boolean,
         val speciesId: Int,
         val heldItemId: Int,
         val experience: Long,
@@ -46,56 +31,21 @@ object Gen3Decrypt {
         val pp: IntArray,
     )
 
-    /** [struct] must be at least 0x50 bytes (the shared Box+party prefix). */
+    /** [struct] must be at least 0x38 bytes (through the Attacks substructure). */
     fun decode(struct: ByteArray): Decoded? {
-        if (struct.size < 0x50) return null
-
-        val personality = struct.u32(0x00)
-        val otId = struct.u32(0x04)
-        val nickname = Gen3Text.decode(struct.copyOfRange(0x08, 0x08 + 10))
-        val otName = Gen3Text.decode(struct.copyOfRange(0x14, 0x14 + 7))
-        val storedChecksum = struct.u16(0x1C)
-
-        val key = personality xor otId
-        val decrypted = ByteArray(48)
-        for (i in 0 until 12) {
-            val word = struct.u32(0x20 + i * 4) xor key
-            decrypted[i * 4] = (word and 0xFF).toByte()
-            decrypted[i * 4 + 1] = ((word shr 8) and 0xFF).toByte()
-            decrypted[i * 4 + 2] = ((word shr 16) and 0xFF).toByte()
-            decrypted[i * 4 + 3] = ((word shr 24) and 0xFF).toByte()
-        }
-
-        var sum = 0
-        for (i in 0 until 24) sum += decrypted.u16(i * 2)
-        val checksumValid = (sum and 0xFFFF) == storedChecksum
-
-        // order[identity] = which raw (still-shuffled) 12-byte block position holds that
-        // canonical substructure -- a DIRECT lookup, not an inverse/search. Confirmed against
-        // PKHeX's Decrypt3 (PokeCrypto.cs): canonical[i] = raw[order[i]], via its in-place
-        // swap-based Shuffle3. (A previous version of this code inverted the table, which
-        // only produced correct results on rows whose sub-permutation was a self-inverse
-        // 2-swap -- exactly matching the observed bug where species/growth kept decoding
-        // right while Attacks/EVs/Misc were scrambled on non-involutive rows.)
-        val order = SUBSTRUCTURE_ORDER[(personality % 24).toInt()]
-        val growth = order[0] * 12
-        val attacks = order[1] * 12
+        if (struct.size < 0x38) return null
 
         return Decoded(
-            nickname = nickname,
-            otName = otName,
-            checksumValid = checksumValid,
-            speciesId = decrypted.u16(growth),
-            heldItemId = decrypted.u16(growth + 2),
-            experience = decrypted.u32(growth + 4),
-            friendship = decrypted[growth + 9].toInt() and 0xFF,
-            moves = intArrayOf(
-                decrypted.u16(attacks), decrypted.u16(attacks + 2),
-                decrypted.u16(attacks + 4), decrypted.u16(attacks + 6),
-            ),
+            nickname = Gen3Text.decode(struct.copyOfRange(0x08, 0x08 + 10)),
+            otName = Gen3Text.decode(struct.copyOfRange(0x14, 0x14 + 7)),
+            speciesId = struct.u16(0x20),
+            heldItemId = struct.u16(0x22),
+            experience = struct.u32(0x24),
+            friendship = struct[0x29].toInt() and 0xFF,
+            moves = intArrayOf(struct.u16(0x2C), struct.u16(0x2E), struct.u16(0x30), struct.u16(0x32)),
             pp = intArrayOf(
-                decrypted[attacks + 8].toInt() and 0xFF, decrypted[attacks + 9].toInt() and 0xFF,
-                decrypted[attacks + 10].toInt() and 0xFF, decrypted[attacks + 11].toInt() and 0xFF,
+                struct[0x34].toInt() and 0xFF, struct[0x35].toInt() and 0xFF,
+                struct[0x36].toInt() and 0xFF, struct[0x37].toInt() and 0xFF,
             ),
         )
     }

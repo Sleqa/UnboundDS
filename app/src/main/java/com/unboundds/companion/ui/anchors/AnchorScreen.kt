@@ -61,37 +61,18 @@ fun AnchorScreen() {
                         continue
                     }
                     val stats = PartyDecoder.decode(bytes)
-                    val decrypted = Gen3Decrypt.decode(bytes)
-                    // Unbound's engine checksum consistently fails to match vanilla's formula even
-                    // when species/moves/nickname decode correctly (confirmed on real hardware
-                    // 2026-07-22) -- Unbound likely folds extra data into its own checksum. Shown
-                    // for reference only, not a trust gate.
-                    val checksumTag = if (decrypted?.checksumValid == true) "matches vanilla formula" else "differs (expected for Unbound)"
-                    val speciesLine = if (decrypted != null) {
-                        val moveList = decrypted.moves.indices.joinToString(", ") { i ->
-                            "${names.moveName(decrypted.moves[i])} #${decrypted.moves[i]} (${decrypted.pp[i]}pp)"
+                    val decoded = Gen3Decrypt.decode(bytes)
+                    val speciesLine = if (decoded != null) {
+                        val moveList = decoded.moves.indices.joinToString(", ") { i ->
+                            "${names.moveName(decoded.moves[i])} #${decoded.moves[i]} (${decoded.pp[i]}pp)"
                         }
-                        " | ${names.speciesName(decrypted.speciesId)} #${decrypted.speciesId} \"${decrypted.nickname}\" " +
-                            "moves: [$moveList] [checksum: $checksumTag]"
+                        " | ${names.speciesName(decoded.speciesId)} #${decoded.speciesId} \"${decoded.nickname}\" " +
+                            "moves: [$moveList]"
                     } else {
                         ""
                     }
                     out += "Slot ${slot + 1} @0x${addr.toString(16)}: " +
                         (stats?.summary ?: "empty/invalid") + speciesLine
-
-                    // Scan every 2-byte-aligned offset for a value that matches a real species
-                    // name -- bypasses the encrypted-substructure assumption entirely, in case
-                    // this build stores party species in plaintext at a different offset.
-                    if (stats?.looksValid == true) {
-                        val hits = mutableListOf<String>()
-                        for (offset in 0 until bytes.size - 1 step 2) {
-                            val v = (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
-                            names.speciesNameOrNull(v)?.let { name -> hits += "0x${offset.toString(16)}=$name(#$v)" }
-                        }
-                        if (hits.isNotEmpty()) {
-                            out += "  species-shaped values found at: ${hits.joinToString(", ")}"
-                        }
-                    }
                 }
                 is RetroArchClient.Result.Failure -> out += "Slot ${slot + 1}: ${r.message}"
             }
@@ -108,11 +89,10 @@ fun AnchorScreen() {
         Text(
             "Reads seeded FireRed anchors live. Matches against your real party/data " +
                 "confirm which addresses hold in Unbound. Enemy party only populates during battle. " +
-                "The checksum tag is informational -- Unbound's engine checksum doesn't match vanilla's " +
-                "formula even on confirmed-correct decodes, so trust species/nickname/stats matching " +
-                "your real data, not the checksum. Species/move names come from Dynamic Pokemon " +
-                "Expansion's tables (same author as Unbound) -- not independently confirmed to be " +
-                "Unbound's exact mapping, so double-check names against what you actually see in-game.",
+                "Party data is plaintext in this build (not the standard Gen3 encryption) -- confirmed " +
+                "2026-07-22. Species/move names come from Dynamic Pokemon Expansion's tables (same " +
+                "author as Unbound) -- not independently confirmed to be Unbound's exact mapping, so " +
+                "double-check names against what you actually see in-game.",
             style = MaterialTheme.typography.bodySmall,
         )
 
