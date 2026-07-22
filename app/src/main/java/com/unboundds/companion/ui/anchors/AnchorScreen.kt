@@ -27,6 +27,7 @@ import com.unboundds.companion.network.RetroArchClient
 import com.unboundds.companion.network.parseReadCoreMemoryResponse
 import com.unboundds.companion.pokemon.Gen3Decrypt
 import com.unboundds.companion.pokemon.Gen3Text
+import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import kotlinx.coroutines.launch
 
@@ -42,6 +43,7 @@ fun AnchorScreen() {
     val context = LocalContext.current
     val client = remember { RetroArchClient() }
     val map = remember { MemoryMap.load(context) }
+    val names = remember { NameTables.load(context) }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
 
@@ -67,9 +69,9 @@ fun AnchorScreen() {
                     val checksumTag = if (decrypted?.checksumValid == true) "matches vanilla formula" else "differs (expected for Unbound)"
                     val speciesLine = if (decrypted != null) {
                         val moveList = decrypted.moves.indices.joinToString(", ") { i ->
-                            "#${decrypted.moves[i]} (${decrypted.pp[i]}pp)"
+                            "${names.moveName(decrypted.moves[i])} #${decrypted.moves[i]} (${decrypted.pp[i]}pp)"
                         }
-                        " | species #${decrypted.speciesId} \"${decrypted.nickname}\" " +
+                        " | ${names.speciesName(decrypted.speciesId)} #${decrypted.speciesId} \"${decrypted.nickname}\" " +
                             "moves: [$moveList] [checksum: $checksumTag]"
                     } else {
                         ""
@@ -94,7 +96,9 @@ fun AnchorScreen() {
                 "confirm which addresses hold in Unbound. Enemy party only populates during battle. " +
                 "The checksum tag is informational -- Unbound's engine checksum doesn't match vanilla's " +
                 "formula even on confirmed-correct decodes, so trust species/nickname/stats matching " +
-                "your real data, not the checksum.",
+                "your real data, not the checksum. Species/move names come from Dynamic Pokemon " +
+                "Expansion's tables (same author as Unbound) -- not independently confirmed to be " +
+                "Unbound's exact mapping, so double-check names against what you actually see in-game.",
             style = MaterialTheme.typography.bodySmall,
         )
 
