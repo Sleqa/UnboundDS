@@ -20,8 +20,9 @@ import androidx.compose.ui.unit.dp
 import com.unboundds.companion.ui.anchors.AnchorScreen
 import com.unboundds.companion.ui.diff.DiffScannerScreen
 import com.unboundds.companion.ui.inspector.InspectorScreen
+import com.unboundds.companion.ui.party.PartyScreen
 
-private enum class Screen { Inspector, DiffScanner, Anchors }
+private enum class Screen { Party, Inspector, DiffScanner, Anchors }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,14 +30,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    var screen by remember { mutableStateOf(Screen.Inspector) }
+                    var screen by remember { mutableStateOf(Screen.Party) }
                     Column {
                         Row(modifier = Modifier.padding(8.dp)) {
+                            Button(onClick = { screen = Screen.Party }) { Text("Party") }
                             Button(onClick = { screen = Screen.Inspector }) { Text("Inspector") }
                             Button(onClick = { screen = Screen.DiffScanner }) { Text("Diff") }
                             Button(onClick = { screen = Screen.Anchors }) { Text("Anchors") }
                         }
                         when (screen) {
+                            Screen.Party -> PartyScreen()
                             Screen.Inspector -> InspectorScreen()
                             Screen.DiffScanner -> DiffScannerScreen()
                             Screen.Anchors -> AnchorScreen()
