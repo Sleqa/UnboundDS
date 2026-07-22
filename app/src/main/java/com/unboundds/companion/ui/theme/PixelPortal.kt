@@ -1,16 +1,22 @@
 package com.unboundds.companion.ui.theme
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -64,29 +70,54 @@ fun portalPhase(): Int {
     return phase
 }
 
-private fun swirlColor(dx: Float, dy: Float, cell: Float, phase: Int): Color {
-    val dist = sqrt(dx * dx + dy * dy)
-    val angleTurns = (atan2(dy, dx) / (2 * PI) + 0.5).toFloat() // 0..1 around the circle
-    val idx = floor(dist / cell * 0.55f + angleTurns * PortalPalette.size - phase)
-        .toInt().mod(PortalPalette.size)
-    return PortalPalette[idx]
-}
+/**
+ * Per-cell geometry (distance/angle -> base palette index) for one canvas size.
+ * This is the expensive part (sqrt/atan2 per cell) -- computed once when the
+ * canvas is laid out, not on every phase tick.
+ */
+private class PortalGrid(val cols: Int, val rows: Int, val cellPx: Float, val baseIndex: IntArray)
 
-/** Fills the whole draw area with the animated swirl -- caller clips to the desired shape. */
-fun DrawScope.drawPortalFill(phase: Int, cellPx: Float) {
-    val cols = ceil(size.width / cellPx).toInt()
-    val rows = ceil(size.height / cellPx).toInt()
-    val cx = size.width / 2f
-    val cy = size.height / 2f
+private fun buildPortalGrid(width: Float, height: Float, cellPx: Float): PortalGrid {
+    val cols = ceil(width / cellPx).toInt().coerceAtLeast(1)
+    val rows = ceil(height / cellPx).toInt().coerceAtLeast(1)
+    val cx = width / 2f
+    val cy = height / 2f
+    val base = IntArray(cols * rows)
     for (row in 0 until rows) {
         for (col in 0 until cols) {
-            val x = col * cellPx + cellPx / 2f
-            val y = row * cellPx + cellPx / 2f
-            drawRect(
-                swirlColor(x - cx, y - cy, cellPx, phase),
-                Offset(col * cellPx, row * cellPx),
-                Size(cellPx, cellPx),
-            )
+            val dx = col * cellPx + cellPx / 2f - cx
+            val dy = row * cellPx + cellPx / 2f - cy
+            val dist = sqrt(dx * dx + dy * dy)
+            val angleTurns = (atan2(dy, dx) / (2 * PI) + 0.5).toFloat()
+            base[row * cols + col] = floor(dist / cellPx * 0.55f + angleTurns * PortalPalette.size).toInt()
+        }
+    }
+    return PortalGrid(cols, rows, cellPx, base)
+}
+
+/** A Canvas that draws the animated swirl, caching per-cell geometry across phase ticks. */
+@Composable
+fun PortalCanvas(phase: Int, modifier: Modifier = Modifier, cellSize: Dp = 4.dp) {
+    var grid by remember { mutableStateOf<PortalGrid?>(null) }
+    val cellPx = with(LocalDensity.current) { cellSize.toPx() }
+    Canvas(
+        modifier = modifier.onSizeChanged { s ->
+            if (s.width > 0 && s.height > 0) {
+                grid = buildPortalGrid(s.width.toFloat(), s.height.toFloat(), cellPx)
+            }
+        },
+    ) {
+        val g = grid ?: return@Canvas
+        val paletteSize = PortalPalette.size
+        for (row in 0 until g.rows) {
+            for (col in 0 until g.cols) {
+                val idx = (g.baseIndex[row * g.cols + col] - phase).mod(paletteSize)
+                drawRect(
+                    PortalPalette[idx],
+                    Offset(col * g.cellPx, row * g.cellPx),
+                    Size(g.cellPx, g.cellPx),
+                )
+            }
         }
     }
 }

@@ -52,12 +52,13 @@ import com.unboundds.companion.ui.theme.GoldHighlight
 import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
-import com.unboundds.companion.ui.theme.drawPortalFill
+import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
-private const val POLL_INTERVAL_MS = 1000L
+private const val PARTY_POLL_INTERVAL_MS = 1000L
+private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
 
 private val HubBackground = Color(0xFF000000)
 private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
@@ -105,12 +106,21 @@ fun HubScreen() {
     var time by remember { mutableStateOf(clockText()) }
     val phase = portalPhase()
 
+    // Party memory reads need to be frequent to feel live; battery/clock barely
+    // change and are cheap to read but not worth waking the composition for every
+    // second, so they get their own slower ticker.
     LaunchedEffect(Unit) {
         while (true) {
             party = readPartyMons(client, map.party)
+            delay(PARTY_POLL_INTERVAL_MS)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
             battery = batteryPercent(context)
             time = clockText()
-            delay(POLL_INTERVAL_MS)
+            delay(CLOCK_BATTERY_POLL_INTERVAL_MS)
         }
     }
 
@@ -146,11 +156,13 @@ fun HubScreen() {
             }
 
             // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
+            // Bottom-aligned so the grid sits down near the OPPONENT/DEX buttons.
             Row(
                 modifier = Modifier
                     .weight(0.38f)
                     .fillMaxHeight()
                     .padding(start = 8.dp),
+                verticalAlignment = Alignment.Bottom,
             ) {
                 PartyColumn(mons = party.drop(3).take(3), phase = phase, modifier = Modifier.weight(1f))
                 Spacer(modifier = Modifier.width(6.dp))
@@ -191,9 +203,7 @@ private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) 
             .border(2.dp, GoldOutline, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            drawPortalFill(phase, cellPx = 4.dp.toPx())
-        }
+        PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
         OutlinedPixelText(label, fontSize = 11.sp)
     }
 }
@@ -212,9 +222,7 @@ private fun MonCircle(mon: HubMon, phase: Int) {
                 .border(2.dp, GoldOutline, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-                drawPortalFill(phase, cellPx = 4.dp.toPx())
-            }
+            PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
             if (sprite != null) {
                 Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
             } else {
