@@ -71,10 +71,11 @@
       "currentCoordsX": { "offset": 16, "size": 2, "signed": true, "confidence": "unbound-verified",
         "note": "obj+0x10, struct Coords16 currentCoords.x from CFRU's include/global.fieldmap.h. Confirmed live 2026-07-22: single X-axis step changed the low byte 0x1F->0x1E." },
       "currentCoordsY": { "offset": 18, "size": 2, "signed": true, "confidence": "unbound-verified",
-        "note": "obj+0x12, currentCoords.y. Not yet independently confirmed with a live Y-axis step, but the struct layout is from real source (CFRU), same as currentCoordsX." },
+        "note": "obj+0x12, currentCoords.y. Confirmed live 2026-07-22: a pure south step changed 36->37, and facingDirection/movementDirection/movementActionId all shifted consistently with a completed southward step in the same diff." },
       "previousCoordsX": { "offset": 20, "size": 2, "signed": true, "confidence": "unbound-verified",
         "note": "obj+0x14, previousCoords.x. Confirmed live 2026-07-22 alongside currentCoordsX -- both sync to the same resting-tile value once a step animation completes, which is why they appeared identical in the diff test." },
-      "previousCoordsY": { "offset": 22, "size": 2, "signed": true, "confidence": "firered-anchor" },
+      "previousCoordsY": { "offset": 22, "size": 2, "signed": true, "confidence": "unbound-verified",
+        "note": "obj+0x16, previousCoords.y. Confirmed live 2026-07-22 alongside currentCoordsY." },
       "facingDirection": { "offset": 24, "size": 1, "confidence": "firered-anchor",
         "note": "obj+0x18, low nibble = facingDirection, high nibble = movementDirection, per CFRU's struct EventObject." }
     }
@@ -111,6 +112,8 @@
       "note": "gPlayerPartyCount per CFRU. Number of occupied party slots -- read this before assuming all 6 party slots are valid Pokemon." },
     { "name": "enemyPartyCount", "address": "0x0202402A", "size": 1, "confidence": "firered-anchor",
       "note": "gEnemyPartyCount per CFRU. Battle only." },
+    { "name": "regionMapSectionId", "address": "0x02036E10", "size": 1, "confidence": "firered-anchor",
+      "note": "gMapHeader.regionMapSectionId (CFRU literally #defines this as gCurrentMapName -- include/new/ram_locs.h). gMapHeader base = 0x02036DFC per BPRE.ld, regionMapSectionId at struct offset 0x14 (include/global.fieldmap.h). This is the actual MAPSEC id the location-name popup is built from -- multiple map bank/number pairs can share one id (e.g. a route split into several map chunks). We don't have Unbound's custom MAPSEC name table (region_map_sections.h explicitly excludes Unbound's list), so this gives a real numeric id, not a name yet. Not live-tested." },
     { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
       "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." },
     { "name": "repelStepCount", "address": "0x0202656C", "size": 1, "confidence": "unbound-verified",
