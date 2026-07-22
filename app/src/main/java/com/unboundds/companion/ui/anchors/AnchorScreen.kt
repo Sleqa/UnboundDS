@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.unboundds.companion.memory.MemoryMap
+import com.unboundds.companion.memory.PartyLayout
 import com.unboundds.companion.network.RetroArchClient
 import com.unboundds.companion.network.parseReadCoreMemoryResponse
+import com.unboundds.companion.pokemon.Gen3Decrypt
 import com.unboundds.companion.pokemon.Gen3Text
 import com.unboundds.companion.pokemon.PartyDecoder
 import kotlinx.coroutines.launch
@@ -27,8 +29,9 @@ import kotlinx.coroutines.launch
 /**
  * Reads the seeded anchor addresses live and shows decoded values, so you can
  * confirm which vanilla-FireRed anchors actually hold in Unbound. The party
- * readout decodes level/HP directly (unencrypted) — if it matches your real
- * party, the party address is verified.
+ * readout decodes level/HP directly (unencrypted) plus species/nickname via
+ * full Gen3 decryption — if it matches your real party, the address and the
+ * decryption logic are both verified (self-checking via the struct checksum).
  */
 @Composable
 fun AnchorScreen() {
@@ -39,6 +42,33 @@ fun AnchorScreen() {
 
     var lines by remember { mutableStateOf(listOf("Map: Unbound ${map.unboundVersion} (${map.baseGame})")) }
 
+    suspend fun readPartySection(label: String, layout: PartyLayout, out: MutableList<String>) {
+        out += "— $label (${layout.confidence}) —"
+        for (slot in 0 until layout.slotCount) {
+            val addr = layout.firstSlotAddress + slot * layout.slotStride
+            when (val r = client.readCoreMemory(addr, layout.slotStride)) {
+                is RetroArchClient.Result.Success -> {
+                    val bytes = parseReadCoreMemoryResponse(r.response)
+                    if (bytes == null) {
+                        out += "Slot ${slot + 1} @0x${addr.toString(16)}: read rejected"
+                        continue
+                    }
+                    val stats = PartyDecoder.decode(bytes)
+                    val decrypted = Gen3Decrypt.decode(bytes)
+                    val checksumTag = if (decrypted?.checksumValid == true) "OK" else "FAIL"
+                    val speciesLine = if (decrypted != null) {
+                        " | species #${decrypted.speciesId} \"${decrypted.nickname}\" [checksum $checksumTag]"
+                    } else {
+                        ""
+                    }
+                    out += "Slot ${slot + 1} @0x${addr.toString(16)}: " +
+                        (stats?.summary ?: "empty/invalid") + speciesLine
+                }
+                is RetroArchClient.Result.Failure -> out += "Slot ${slot + 1}: ${r.message}"
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -48,7 +78,7 @@ fun AnchorScreen() {
         Text("Anchor verification", style = MaterialTheme.typography.headlineSmall)
         Text(
             "Reads seeded FireRed anchors live. Matches against your real party/data " +
-                "confirm which addresses hold in Unbound.",
+                "confirm which addresses hold in Unbound. Enemy party only populates during battle.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -56,24 +86,18 @@ fun AnchorScreen() {
             onClick = {
                 scope.launch {
                     val out = mutableListOf("Map: Unbound ${map.unboundVersion} (${map.baseGame})", "")
-                    out += "— Party (${map.party.confidence}) —"
-                    for (slot in 0 until map.party.slotCount) {
-                        val addr = map.party.firstSlotAddress + slot * map.party.slotStride
-                        when (val r = client.readCoreMemory(addr, map.party.slotStride)) {
-                            is RetroArchClient.Result.Success -> {
-                                val bytes = parseReadCoreMemoryResponse(r.response)
-                                val decoded = bytes?.let { PartyDecoder.decode(it) }
-                                out += "Slot ${slot + 1} @0x${addr.toString(16)}: " +
-                                    (decoded?.summary ?: "read rejected")
-                            }
-                            is RetroArchClient.Result.Failure -> {
-                                out += "Slot ${slot + 1}: ${r.message}"
-                            }
-                        }
-                    }
+                    readPartySection("Party", map.party, out)
+                    out += ""
+                    readPartySection("Enemy party", map.enemyParty, out)
+
                     out += ""
                     out += "— Player overworld object (${map.overworldObjects.confidence}) —"
-                    when (val r = client.readCoreMemory(map.overworldObjects.firstSlotAddress, map.overworldObjects.slotStride)) {
+                    when (
+                        val r = client.readCoreMemory(
+                            map.overworldObjects.firstSlotAddress,
+                            map.overworldObjects.slotStride,
+                        )
+                    ) {
                         is RetroArchClient.Result.Success -> {
                             val bytes = parseReadCoreMemoryResponse(r.response)
                             val hex = bytes?.joinToString(" ") { "%02X".format(it) } ?: "rejected"

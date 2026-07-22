@@ -25,6 +25,7 @@ data class MemoryMap(
     val unboundVersion: String,
     val baseGame: String,
     val party: PartyLayout,
+    val enemyParty: PartyLayout,
     val overworldObjects: PartyLayout,
     val scriptVars: PartyLayout,
     val anchors: List<Anchor>,
@@ -44,6 +45,7 @@ data class MemoryMap(
             val root = JSONObject(json)
 
             val party = parseLayout(root.getJSONObject("party"))
+            val enemyParty = parseLayout(root.getJSONObject("enemyParty"))
             val overworldObjects = parseLayout(root.getJSONObject("overworldObjects"))
             val scriptVars = parseLayout(root.getJSONObject("scriptVars"))
 
@@ -64,6 +66,7 @@ data class MemoryMap(
                 unboundVersion = root.getString("unboundVersion"),
                 baseGame = root.getString("baseGame"),
                 party = party,
+                enemyParty = enemyParty,
                 overworldObjects = overworldObjects,
                 scriptVars = scriptVars,
                 anchors = anchors,
