@@ -1,0 +1,59 @@
+{
+  "unboundVersion": "2.1.1.1",
+  "baseGame": "firered-us",
+  "saveType": "flash-128k",
+  "author": "Skeli789",
+  "regions": {
+    "wram": { "start": "0x02000000", "end": "0x0203FFFF" },
+    "iram": { "start": "0x03000000", "end": "0x03007FFF" }
+  },
+  "_confidence_levels": {
+    "firered-anchor": "Vanilla FireRed address from the pokefirered decomp / community RAM maps. NOT confirmed for Unbound — verify against a live read before trusting.",
+    "unbound-verified": "Community-verified against Unbound specifically (e.g. from working GameShark codes)."
+  },
+  "pointers": [
+    { "name": "gSaveBlock1Ptr", "address": "0x03005008", "size": 4, "confidence": "firered-anchor",
+      "note": "LE u32 pointing into WRAM; money, player position, flags, vars live inside this struct" },
+    { "name": "gSaveBlock2Ptr", "address": "0x0300500C", "size": 4, "confidence": "firered-anchor" }
+  ],
+  "party": {
+    "name": "gPlayerParty",
+    "slotStride": 100,
+    "slotCount": 6,
+    "firstSlotAddress": "0x02024284",
+    "confidence": "firered-anchor",
+    "note": "6 x 100-byte Gen3 mon structs. Level/HP/stats at offsets 0x54-0x63 are UNENCRYPTED and directly readable for verification.",
+    "unencryptedFields": {
+      "personality": { "offset": 0, "size": 4 },
+      "otId": { "offset": 4, "size": 4 },
+      "statusCondition": { "offset": 80, "size": 4 },
+      "level": { "offset": 84, "size": 1 },
+      "currentHp": { "offset": 86, "size": 2 },
+      "maxHp": { "offset": 88, "size": 2 },
+      "attack": { "offset": 90, "size": 2 },
+      "defense": { "offset": 92, "size": 2 },
+      "speed": { "offset": 94, "size": 2 },
+      "spAttack": { "offset": 96, "size": 2 },
+      "spDefense": { "offset": 98, "size": 2 }
+    }
+  },
+  "enemyParty": {
+    "name": "gEnemyParty",
+    "slotStride": 100,
+    "slotCount": 6,
+    "firstSlotAddress": "0x0202402C",
+    "confidence": "firered-anchor",
+    "note": "Battle only"
+  },
+  "anchors": [
+    { "name": "playerName", "address": "0x020245CC", "size": 8, "confidence": "firered-anchor" },
+    { "name": "rivalName", "address": "0x02028F78", "size": 8, "confidence": "firered-anchor" },
+    { "name": "prevMapBank", "address": "0x02031DB4", "size": 1, "confidence": "firered-anchor" },
+    { "name": "prevMapNumber", "address": "0x02031DB5", "size": 1, "confidence": "firered-anchor" },
+    { "name": "entryWarpId", "address": "0x02031DB6", "size": 1, "confidence": "firered-anchor" },
+    { "name": "entryX", "address": "0x02031DB8", "size": 2, "confidence": "firered-anchor" },
+    { "name": "entryY", "address": "0x02031DBA", "size": 2, "confidence": "firered-anchor" },
+    { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
+      "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." }
+  ]
+}

@@ -1,0 +1,102 @@
+package com.unboundds.companion.ui.anchors
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.unboundds.companion.memory.MemoryMap
+import com.unboundds.companion.network.RetroArchClient
+import com.unboundds.companion.network.parseReadCoreMemoryResponse
+import com.unboundds.companion.pokemon.PartyDecoder
+import kotlinx.coroutines.launch
+
+/**
+ * Reads the seeded anchor addresses live and shows decoded values, so you can
+ * confirm which vanilla-FireRed anchors actually hold in Unbound. The party
+ * readout decodes level/HP directly (unencrypted) — if it matches your real
+ * party, the party address is verified.
+ */
+@Composable
+fun AnchorScreen() {
+    val context = LocalContext.current
+    val client = remember { RetroArchClient() }
+    val map = remember { MemoryMap.load(context) }
+    val scope = rememberCoroutineScope()
+
+    var lines by remember { mutableStateOf(listOf("Map: Unbound ${map.unboundVersion} (${map.baseGame})")) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        Text("Anchor verification", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Reads seeded FireRed anchors live. Matches against your real party/data " +
+                "confirm which addresses hold in Unbound.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
+        Button(
+            onClick = {
+                scope.launch {
+                    val out = mutableListOf("Map: Unbound ${map.unboundVersion} (${map.baseGame})", "")
+                    out += "— Party (${map.party.confidence}) —"
+                    for (slot in 0 until map.party.slotCount) {
+                        val addr = map.party.firstSlotAddress + slot * map.party.slotStride
+                        when (val r = client.readCoreMemory(addr, map.party.slotStride)) {
+                            is RetroArchClient.Result.Success -> {
+                                val bytes = parseReadCoreMemoryResponse(r.response)
+                                val decoded = bytes?.let { PartyDecoder.decode(it) }
+                                out += "Slot ${slot + 1} @0x${addr.toString(16)}: " +
+                                    (decoded?.summary ?: "read rejected")
+                            }
+                            is RetroArchClient.Result.Failure -> {
+                                out += "Slot ${slot + 1}: ${r.message}"
+                            }
+                        }
+                    }
+                    out += ""
+                    out += "— Anchors —"
+                    for (anchor in map.anchors) {
+                        when (val r = client.readCoreMemory(anchor.address, anchor.size)) {
+                            is RetroArchClient.Result.Success -> {
+                                val bytes = parseReadCoreMemoryResponse(r.response)
+                                val hex = bytes?.joinToString(" ") { "%02X".format(it) } ?: "rejected"
+                                out += "${anchor.name} @0x${anchor.address.toString(16)} " +
+                                    "[${anchor.confidence}]: $hex"
+                            }
+                            is RetroArchClient.Result.Failure -> {
+                                out += "${anchor.name}: ${r.message}"
+                            }
+                        }
+                    }
+                    lines = out
+                }
+            },
+            modifier = Modifier.padding(top = 12.dp),
+        ) {
+            Text("Read all anchors")
+        }
+
+        Column(modifier = Modifier.padding(top = 12.dp)) {
+            lines.forEach { line ->
+                Text(line, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
+    }
+}

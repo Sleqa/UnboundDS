@@ -17,10 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.unboundds.companion.ui.anchors.AnchorScreen
 import com.unboundds.companion.ui.diff.DiffScannerScreen
 import com.unboundds.companion.ui.inspector.InspectorScreen
 
-private enum class Screen { Inspector, DiffScanner }
+private enum class Screen { Inspector, DiffScanner, Anchors }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,11 +33,13 @@ class MainActivity : ComponentActivity() {
                     Column {
                         Row(modifier = Modifier.padding(8.dp)) {
                             Button(onClick = { screen = Screen.Inspector }) { Text("Inspector") }
-                            Button(onClick = { screen = Screen.DiffScanner }) { Text("Diff scanner") }
+                            Button(onClick = { screen = Screen.DiffScanner }) { Text("Diff") }
+                            Button(onClick = { screen = Screen.Anchors }) { Text("Anchors") }
                         }
                         when (screen) {
                             Screen.Inspector -> InspectorScreen()
                             Screen.DiffScanner -> DiffScannerScreen()
+                            Screen.Anchors -> AnchorScreen()
                         }
                     }
                 }
