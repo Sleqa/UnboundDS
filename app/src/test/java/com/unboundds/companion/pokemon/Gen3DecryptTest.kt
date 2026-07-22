@@ -132,14 +132,15 @@ class Gen3DecryptTest {
     }
 
     companion object {
-        // Mirrors Gen3Decrypt's private table so the test can build correctly-ordered fixtures.
+        // Mirrors Gen3Decrypt's private table (sourced from PKHeX's BlockPosition,
+        // PKHeX.Core/PKM/Util/PokeCrypto.cs) so the test can build correctly-ordered fixtures.
         private val SUBSTRUCTURE_ORDER_FOR_TEST: Array<IntArray> = arrayOf(
-            intArrayOf(0, 1, 2, 3), intArrayOf(0, 1, 3, 2), intArrayOf(0, 2, 1, 3), intArrayOf(0, 2, 3, 1),
-            intArrayOf(0, 3, 1, 2), intArrayOf(0, 3, 2, 1), intArrayOf(1, 0, 2, 3), intArrayOf(1, 0, 3, 2),
-            intArrayOf(1, 2, 0, 3), intArrayOf(1, 2, 3, 0), intArrayOf(1, 3, 0, 2), intArrayOf(1, 3, 2, 0),
-            intArrayOf(2, 0, 1, 3), intArrayOf(2, 0, 3, 1), intArrayOf(2, 1, 0, 3), intArrayOf(2, 1, 3, 0),
-            intArrayOf(2, 3, 0, 1), intArrayOf(2, 3, 1, 0), intArrayOf(3, 0, 1, 2), intArrayOf(3, 0, 2, 1),
-            intArrayOf(3, 1, 0, 2), intArrayOf(3, 1, 2, 0), intArrayOf(3, 2, 0, 1), intArrayOf(3, 2, 1, 0),
+            intArrayOf(0, 1, 2, 3), intArrayOf(0, 1, 3, 2), intArrayOf(0, 2, 1, 3), intArrayOf(0, 3, 1, 2),
+            intArrayOf(0, 2, 3, 1), intArrayOf(0, 3, 2, 1), intArrayOf(1, 0, 2, 3), intArrayOf(1, 0, 3, 2),
+            intArrayOf(2, 0, 1, 3), intArrayOf(3, 0, 1, 2), intArrayOf(2, 0, 3, 1), intArrayOf(3, 0, 2, 1),
+            intArrayOf(1, 2, 0, 3), intArrayOf(1, 3, 0, 2), intArrayOf(2, 1, 0, 3), intArrayOf(3, 1, 0, 2),
+            intArrayOf(2, 3, 0, 1), intArrayOf(3, 2, 0, 1), intArrayOf(1, 2, 3, 0), intArrayOf(1, 3, 2, 0),
+            intArrayOf(2, 1, 3, 0), intArrayOf(3, 1, 2, 0), intArrayOf(2, 3, 1, 0), intArrayOf(3, 2, 1, 0),
         )
     }
 }

@@ -20,13 +20,18 @@ object Gen3Decrypt {
     // Row i = substructure order for personality % 24 == i.
     // Values are substructure identities (0=Growth 1=Attacks 2=EVs 3=Misc) in
     // position order, e.g. row 0 = [0,1,2,3] means position0=Growth, position1=Attacks...
+    // Sourced from PKHeX's BlockPosition table (PKHeX.Core/PKM/Util/PokeCrypto.cs,
+    // kwsch/PKHeX) 2026-07-22 -- a previous hand-transcribed version of this table had
+    // several rows wrong (rows 8-13, 15, 17-20, 22 in particular), which correctly
+    // decoded species/nickname (position 0 = Growth was still right for many personality
+    // values) while corrupting moves/PP for Pokemon whose personality%24 hit a wrong row.
     private val SUBSTRUCTURE_ORDER: Array<IntArray> = arrayOf(
-        intArrayOf(0, 1, 2, 3), intArrayOf(0, 1, 3, 2), intArrayOf(0, 2, 1, 3), intArrayOf(0, 2, 3, 1),
-        intArrayOf(0, 3, 1, 2), intArrayOf(0, 3, 2, 1), intArrayOf(1, 0, 2, 3), intArrayOf(1, 0, 3, 2),
-        intArrayOf(1, 2, 0, 3), intArrayOf(1, 2, 3, 0), intArrayOf(1, 3, 0, 2), intArrayOf(1, 3, 2, 0),
-        intArrayOf(2, 0, 1, 3), intArrayOf(2, 0, 3, 1), intArrayOf(2, 1, 0, 3), intArrayOf(2, 1, 3, 0),
-        intArrayOf(2, 3, 0, 1), intArrayOf(2, 3, 1, 0), intArrayOf(3, 0, 1, 2), intArrayOf(3, 0, 2, 1),
-        intArrayOf(3, 1, 0, 2), intArrayOf(3, 1, 2, 0), intArrayOf(3, 2, 0, 1), intArrayOf(3, 2, 1, 0),
+        intArrayOf(0, 1, 2, 3), intArrayOf(0, 1, 3, 2), intArrayOf(0, 2, 1, 3), intArrayOf(0, 3, 1, 2),
+        intArrayOf(0, 2, 3, 1), intArrayOf(0, 3, 2, 1), intArrayOf(1, 0, 2, 3), intArrayOf(1, 0, 3, 2),
+        intArrayOf(2, 0, 1, 3), intArrayOf(3, 0, 1, 2), intArrayOf(2, 0, 3, 1), intArrayOf(3, 0, 2, 1),
+        intArrayOf(1, 2, 0, 3), intArrayOf(1, 3, 0, 2), intArrayOf(2, 1, 0, 3), intArrayOf(3, 1, 0, 2),
+        intArrayOf(2, 3, 0, 1), intArrayOf(3, 2, 0, 1), intArrayOf(1, 2, 3, 0), intArrayOf(1, 3, 2, 0),
+        intArrayOf(2, 1, 3, 0), intArrayOf(3, 1, 2, 0), intArrayOf(2, 3, 1, 0), intArrayOf(3, 2, 1, 0),
     )
 
     data class Decoded(

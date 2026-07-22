@@ -25,6 +25,7 @@
     "confidence": "unbound-verified",
     "note2": "Confirmed on real hardware 2026-07-22: decoded Lv/HP/stats matched the actual in-game party exactly.",
     "note3": "Species/nickname decode (Gen3Decrypt) confirmed correct 2026-07-22 across all 6 party slots + full enemy team, despite the struct's built-in checksum failing every time. Layout/decryption is right; Unbound most likely changed the checksum FORMULA (e.g. folding in extra data for its custom Mega Evolution/mission systems) rather than the substructure layout. Treat checksum as informational, not a trust gate.",
+    "note4": "Moves/PP came back nonsensical (PP values above the real max) despite correct species -- the hand-transcribed substructure-order table had several wrong rows (Growth's position happened to still be right on those rows, which is why species decoded fine while Attacks/EVs/Misc were scrambled). Replaced 2026-07-22 with the verified table from PKHeX's PokeCrypto.cs (kwsch/PKHeX, an actively-maintained open-source Gen3+ save editor).",
     "note": "6 x 100-byte Gen3 mon structs. Level/HP/stats at offsets 0x54-0x63 are UNENCRYPTED and directly readable for verification.",
     "unencryptedFields": {
       "personality": { "offset": 0, "size": 4 },
