@@ -3,6 +3,10 @@
   "baseGame": "firered-us",
   "saveType": "flash-128k",
   "author": "Skeli789",
+  "_sources": {
+    "dynamicPokemonExpansion": "github.com/DizzyEggg/Dynamic-Pokemon-Expansion (Skeli789 collaborates on this) -- species.h/moves.h/charmap.tbl used for name tables, 2026-07-22.",
+    "cfru": "github.com/Skeli789/Complete-Fire-Red-Upgrade -- Unbound's own engine base (same author). Confirmed gWarp1/gEventObjects/gStringVar1-4/Var8000 addresses and the EventObject/WarpData struct layouts (coordinates, map bank/number) against this source, 2026-07-22. Its region_map_sections.h has '#ifndef UNBOUND //Modify this section' around the MAPSEC name list -- confirms Unbound has its own custom map name table NOT present in this repo, so location names still need live discovery."
+  },
   "regions": {
     "wram": { "start": "0x02000000", "end": "0x0203FFFF" },
     "iram": { "start": "0x03000000", "end": "0x03007FFF" }
@@ -50,17 +54,22 @@
     "confidence": "unbound-verified",
     "note": "Battle only. Confirmed 2026-07-22: decoded species/nicknames matched the real enemy team." },
   "overworldObjects": {
-    "name": "gObjectEvents",
+    "name": "gEventObjects (struct EventObject, CFRU naming)",
     "slotStride": 36,
     "slotCount": 16,
     "firstSlotAddress": "0x02036E38",
-    "confidence": "firered-anchor",
-    "note": "Slot 0 is the player. Community FireRed RAM map, cross-referenced 2026-07-22. Sub-field offsets (x/y coords, facing direction) are NOT mapped yet -- struct is opaque for now. Use the diff scanner while walking to locate the x/y bytes within this 36-byte block.",
-    "candidateFields": {
-      "coordAxisA_low": { "offset": 16, "size": 1, "confidence": "candidate",
-        "note": "0x02036E48 (obj+0x10). Changed 0x1F->0x1E (-1) on a single step, 2026-07-22. Likely the low byte of a u16 coordinate (high byte didn't change, consistent with a small position value under 256) -- one of currentCoords.x/y or a related field." },
-      "coordAxisA_low_2": { "offset": 20, "size": 1, "confidence": "candidate",
-        "note": "0x02036E4C (obj+0x14), exactly 4 bytes after coordAxisA_low. Changed identically (0x1F->0x1E) on the SAME step (confirmed 2026-07-22 this was a pure X-axis step) -- both fields moving together on a single-axis step supports current+previous copies of X, not X and Y. Still need a pure Y-axis (north/south) step to find the Y offset pair and fully confirm." }
+    "confidence": "unbound-verified",
+    "note": "Slot 0 is the player. Address confirmed 2026-07-22 two ways: (1) matches gEventObjects in Skeli789/Complete-Fire-Red-Upgrade (Unbound's own engine base) include/new/ram_locs.h, and (2) matches the diff-scanner test result below.",
+    "fields": {
+      "currentCoordsX": { "offset": 16, "size": 2, "signed": true, "confidence": "unbound-verified",
+        "note": "obj+0x10, struct Coords16 currentCoords.x from CFRU's include/global.fieldmap.h. Confirmed live 2026-07-22: single X-axis step changed the low byte 0x1F->0x1E." },
+      "currentCoordsY": { "offset": 18, "size": 2, "signed": true, "confidence": "unbound-verified",
+        "note": "obj+0x12, currentCoords.y. Not yet independently confirmed with a live Y-axis step, but the struct layout is from real source (CFRU), same as currentCoordsX." },
+      "previousCoordsX": { "offset": 20, "size": 2, "signed": true, "confidence": "unbound-verified",
+        "note": "obj+0x14, previousCoords.x. Confirmed live 2026-07-22 alongside currentCoordsX -- both sync to the same resting-tile value once a step animation completes, which is why they appeared identical in the diff test." },
+      "previousCoordsY": { "offset": 22, "size": 2, "signed": true, "confidence": "firered-anchor" },
+      "facingDirection": { "offset": 24, "size": 1, "confidence": "firered-anchor",
+        "note": "obj+0x18, low nibble = facingDirection, high nibble = movementDirection, per CFRU's struct EventObject." }
     }
   },
   "scriptVars": {
@@ -82,9 +91,19 @@
     { "name": "entryX", "address": "0x02031DB8", "size": 2, "confidence": "firered-anchor" },
     { "name": "entryY", "address": "0x02031DBA", "size": 2, "confidence": "firered-anchor" },
     { "name": "currentMapBank", "address": "0x02031DBC", "size": 1, "confidence": "unbound-verified",
-      "note": "Confirmed 2026-07-22: changed consistently and distinctly moving between buildings and routes. Live current map, not just the entry-warp snapshot like prevMapBank." },
+      "note": "Confirmed 2026-07-22: changed consistently and distinctly moving between buildings and routes. Also matches gWarp1.mapGroup (struct WarpData) from CFRU's include/new/ram_locs.h / include/global.h." },
     { "name": "currentMapNumber", "address": "0x02031DBD", "size": 1, "confidence": "unbound-verified",
-      "note": "Confirmed 2026-07-22 alongside currentMapBank." },
+      "note": "Confirmed 2026-07-22 alongside currentMapBank. Matches gWarp1.mapNum." },
+    { "name": "currentWarpId", "address": "0x02031DBE", "size": 1, "confidence": "firered-anchor",
+      "note": "gWarp1.warpId, per CFRU's struct WarpData. Likely only meaningful right after a warp transition, not continuous like currentMapBank/Number." },
+    { "name": "currentWarpX", "address": "0x02031DC0", "size": 2, "confidence": "firered-anchor",
+      "note": "gWarp1.x. Warp-destination coordinate, not a continuously-updated live position -- use overworldObjects.currentCoordsX for that instead." },
+    { "name": "currentWarpY", "address": "0x02031DC2", "size": 2, "confidence": "firered-anchor",
+      "note": "gWarp1.y." },
+    { "name": "playerPartyCount", "address": "0x02024029", "size": 1, "confidence": "firered-anchor",
+      "note": "gPlayerPartyCount per CFRU. Number of occupied party slots -- read this before assuming all 6 party slots are valid Pokemon." },
+    { "name": "enemyPartyCount", "address": "0x0202402A", "size": 1, "confidence": "firered-anchor",
+      "note": "gEnemyPartyCount per CFRU. Battle only." },
     { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
       "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." },
     { "name": "repelStepCount", "address": "0x0202656C", "size": 1, "confidence": "unbound-verified",
@@ -93,13 +112,13 @@
       "note": "Changed 0x00 -> 0x40 on entering a wild battle (before attacking), diff-scanner result from a single test. Hypothesis: a battle type/state flag byte. To confirm: check the value across a trainer battle, a double battle, and after the battle ends (should return to 0x00) - if it's consistently the same shape per battle type, it's real." },
     { "name": "fieldCounterNearRepel", "address": "0x02026570", "size": 1, "confidence": "candidate",
       "note": "Changed 0x04 -> 0x00 on entering a wild battle, diff-scanner result from a single test. Sits exactly 4 bytes after repelStepCount, so it may be an adjacent field in the same small struct rather than something battle-related. To confirm: watch it while walking with no repel active (does it count steps or encounters?), and see if it resets on other triggers besides battle entry." },
-    { "name": "stringBuffer0", "address": "0x02021CD0", "size": 32, "confidence": "firered-anchor", "kind": "text",
-      "note": "Community FireRed RAM map: general-purpose decoded string buffer, used for various UI text. Candidate for the 'Route 9'/'Tehl Town' location banner text -- walk into a new map and read this right after the banner shows to test." },
-    { "name": "stringBuffer1", "address": "0x02021CF0", "size": 20, "confidence": "firered-anchor", "kind": "text",
-      "note": "Community FireRed RAM map: general-purpose decoded string buffer. Same location-banner test as stringBuffer0." },
-    { "name": "stringBuffer2", "address": "0x02021D04", "size": 20, "confidence": "firered-anchor", "kind": "text",
-      "note": "Community FireRed RAM map: general-purpose decoded string buffer. Same location-banner test as stringBuffer0." },
-    { "name": "msgBoxString", "address": "0x02021D18", "size": 32, "confidence": "firered-anchor", "kind": "text",
-      "note": "Community FireRed RAM map: 'string to be displayed in a message box' -- size is a guess (32B), the real field may be longer or shorter. Same location-banner test as stringBuffer0." }
+    { "name": "stringBuffer0", "address": "0x02021CD0", "size": 32, "confidence": "unbound-verified", "kind": "text",
+      "note": "gStringVar1 per CFRU's include/new/ram_locs.h (matches address exactly). Confirmed live 2026-07-22 decoding real text ('Wed. 9:39 PM', the start-menu clock) -- general-purpose script string var, reused for lots of UI text including possibly the location banner. Read right after crossing into a new map to test that specifically." },
+    { "name": "stringBuffer1", "address": "0x02021CF0", "size": 20, "confidence": "unbound-verified", "kind": "text",
+      "note": "gStringVar2 per CFRU. Same location-banner test as stringBuffer0." },
+    { "name": "stringBuffer2", "address": "0x02021D04", "size": 20, "confidence": "unbound-verified", "kind": "text",
+      "note": "gStringVar3 per CFRU. Same location-banner test as stringBuffer0." },
+    { "name": "msgBoxString", "address": "0x02021D18", "size": 32, "confidence": "unbound-verified", "kind": "text",
+      "note": "gStringVar4 per CFRU (address matches; size still a guess since CFRU's #define doesn't state a length). Same location-banner test as stringBuffer0." }
   ]
 }

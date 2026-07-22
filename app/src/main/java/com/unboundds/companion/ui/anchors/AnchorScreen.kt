@@ -121,6 +121,14 @@ fun AnchorScreen() {
                         is RetroArchClient.Result.Success -> {
                             val bytes = parseReadCoreMemoryResponse(r.response)
                             val hex = bytes?.joinToString(" ") { "%02X".format(it) } ?: "rejected"
+                            if (bytes != null && bytes.size >= 24) {
+                                fun s16(offset: Int): Int {
+                                    val v = (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
+                                    return v.toShort().toInt()
+                                }
+                                out += "Player position: x=${s16(0x10)} y=${s16(0x12)} " +
+                                    "(previous: x=${s16(0x14)} y=${s16(0x16)})"
+                            }
                             out += "OW0 @0x${map.overworldObjects.firstSlotAddress.toString(16)}: $hex"
                         }
                         is RetroArchClient.Result.Failure -> out += "OW0: ${r.message}"
