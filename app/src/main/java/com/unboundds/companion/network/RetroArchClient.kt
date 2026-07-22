@@ -29,7 +29,7 @@ class RetroArchClient(
                 val requestBytes = "$command\n".toByteArray(Charsets.US_ASCII)
                 socket.send(DatagramPacket(requestBytes, requestBytes.size, address, port))
 
-                val buffer = ByteArray(4096)
+                val buffer = ByteArray(8192)
                 val packet = DatagramPacket(buffer, buffer.size)
                 socket.receive(packet)
                 Result.Success(String(packet.data, 0, packet.length, Charsets.US_ASCII).trim())
