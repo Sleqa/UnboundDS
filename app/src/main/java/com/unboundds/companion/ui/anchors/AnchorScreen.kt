@@ -78,6 +78,20 @@ fun AnchorScreen() {
                     }
                     out += "Slot ${slot + 1} @0x${addr.toString(16)}: " +
                         (stats?.summary ?: "empty/invalid") + speciesLine
+
+                    // Scan every 2-byte-aligned offset for a value that matches a real species
+                    // name -- bypasses the encrypted-substructure assumption entirely, in case
+                    // this build stores party species in plaintext at a different offset.
+                    if (stats?.looksValid == true) {
+                        val hits = mutableListOf<String>()
+                        for (offset in 0 until bytes.size - 1 step 2) {
+                            val v = (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
+                            names.speciesNameOrNull(v)?.let { name -> hits += "0x${offset.toString(16)}=$name(#$v)" }
+                        }
+                        if (hits.isNotEmpty()) {
+                            out += "  species-shaped values found at: ${hits.joinToString(", ")}"
+                        }
+                    }
                 }
                 is RetroArchClient.Result.Failure -> out += "Slot ${slot + 1}: ${r.message}"
             }

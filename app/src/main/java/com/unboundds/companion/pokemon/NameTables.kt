@@ -20,6 +20,9 @@ class NameTables private constructor(
     fun speciesName(id: Int): String = species[id] ?: "Unknown #$id"
     fun moveName(id: Int): String = moves[id] ?: "Unknown #$id"
 
+    /** Null if [id] has no table entry (id 0 = "None" is excluded too) -- for scanning raw bytes for plausible species IDs. */
+    fun speciesNameOrNull(id: Int): String? = if (id == 0) null else species[id]
+
     companion object {
         fun load(context: Context): NameTables {
             val species = loadTable(context, "species_names.json")
