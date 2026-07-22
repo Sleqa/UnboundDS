@@ -9,7 +9,8 @@
   },
   "_confidence_levels": {
     "firered-anchor": "Vanilla FireRed address from the pokefirered decomp / community RAM maps. NOT confirmed for Unbound — verify against a live read before trusting.",
-    "unbound-verified": "Community-verified against Unbound specifically (e.g. from working GameShark codes)."
+    "unbound-verified": "Confirmed against Unbound specifically (community GameShark code, or a live diff-scanner result that unambiguously matches a known value).",
+    "candidate": "Found via diff-scanner from ONE observed action. Plausible but not cross-verified — could be coincidental or part of an unrelated adjacent field. Needs a second, differently-shaped test before trusting."
   },
   "pointers": [
     { "name": "gSaveBlock1Ptr", "address": "0x03005008", "size": 4, "confidence": "firered-anchor",
@@ -57,6 +58,12 @@
     { "name": "entryX", "address": "0x02031DB8", "size": 2, "confidence": "firered-anchor" },
     { "name": "entryY", "address": "0x02031DBA", "size": 2, "confidence": "firered-anchor" },
     { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
-      "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." }
+      "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." },
+    { "name": "repelStepCount", "address": "0x0202656C", "size": 1, "confidence": "unbound-verified",
+      "note": "Confirmed 2026-07-22: using a Max Repel changed 0x00 -> 0xFA. 0xFA = 250 decimal, exactly the step count a Max Repel grants — strong, non-coincidental match. Try a regular Repel (should write 100/0x64) or Super Repel (200/0xC8) to double-confirm, and watch it count down while walking." },
+    { "name": "battleStateFlag", "address": "0x02025896", "size": 1, "confidence": "candidate",
+      "note": "Changed 0x00 -> 0x40 on entering a wild battle (before attacking), diff-scanner result from a single test. Hypothesis: a battle type/state flag byte. To confirm: check the value across a trainer battle, a double battle, and after the battle ends (should return to 0x00) - if it's consistently the same shape per battle type, it's real." },
+    { "name": "fieldCounterNearRepel", "address": "0x02026570", "size": 1, "confidence": "candidate",
+      "note": "Changed 0x04 -> 0x00 on entering a wild battle, diff-scanner result from a single test. Sits exactly 4 bytes after repelStepCount, so it may be an adjacent field in the same small struct rather than something battle-related. To confirm: watch it while walking with no repel active (does it count steps or encounters?), and see if it resets on other triggers besides battle entry." }
   ]
 }
