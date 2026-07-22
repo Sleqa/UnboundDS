@@ -10,6 +10,7 @@ data class Anchor(
     val size: Int,
     val confidence: String,
     val note: String?,
+    val kind: String,
 )
 
 /** Party layout: base address + stride, so slot N = firstSlotAddress + N * slotStride. */
@@ -50,6 +51,7 @@ data class MemoryMap(
                     size = a.getInt("size"),
                     confidence = a.getString("confidence"),
                     note = if (a.has("note")) a.getString("note") else null,
+                    kind = if (a.has("kind")) a.getString("kind") else "bytes",
                 )
             }
 

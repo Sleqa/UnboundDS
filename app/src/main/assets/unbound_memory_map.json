@@ -21,7 +21,8 @@
     "slotStride": 100,
     "slotCount": 6,
     "firstSlotAddress": "0x02024284",
-    "confidence": "firered-anchor",
+    "confidence": "unbound-verified",
+    "note2": "Confirmed on real hardware 2026-07-22: decoded Lv/HP/stats matched the actual in-game party exactly.",
     "note": "6 x 100-byte Gen3 mon structs. Level/HP/stats at offsets 0x54-0x63 are UNENCRYPTED and directly readable for verification.",
     "unencryptedFields": {
       "personality": { "offset": 0, "size": 4 },
@@ -46,8 +47,10 @@
     "note": "Battle only"
   },
   "anchors": [
-    { "name": "playerName", "address": "0x020245CC", "size": 8, "confidence": "firered-anchor" },
-    { "name": "rivalName", "address": "0x02028F78", "size": 8, "confidence": "firered-anchor" },
+    { "name": "playerName", "address": "0x020245CC", "size": 8, "confidence": "firered-anchor", "kind": "text",
+      "note": "Read as all zeros on real Unbound hardware 2026-07-22 — likely shifted, needs re-discovery via diff scanner." },
+    { "name": "rivalName", "address": "0x02028F78", "size": 8, "confidence": "firered-anchor", "kind": "text",
+      "note": "Decodes to a plausible name on real Unbound hardware 2026-07-22 (CC ED D5 E2 FF -> \"Ryan\") — likely correct, needs player confirmation." },
     { "name": "prevMapBank", "address": "0x02031DB4", "size": 1, "confidence": "firered-anchor" },
     { "name": "prevMapNumber", "address": "0x02031DB5", "size": 1, "confidence": "firered-anchor" },
     { "name": "entryWarpId", "address": "0x02031DB6", "size": 1, "confidence": "firered-anchor" },

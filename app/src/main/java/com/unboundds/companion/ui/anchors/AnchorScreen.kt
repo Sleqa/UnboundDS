@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.network.RetroArchClient
 import com.unboundds.companion.network.parseReadCoreMemoryResponse
+import com.unboundds.companion.pokemon.Gen3Text
 import com.unboundds.companion.pokemon.PartyDecoder
 import kotlinx.coroutines.launch
 
@@ -77,8 +78,13 @@ fun AnchorScreen() {
                             is RetroArchClient.Result.Success -> {
                                 val bytes = parseReadCoreMemoryResponse(r.response)
                                 val hex = bytes?.joinToString(" ") { "%02X".format(it) } ?: "rejected"
+                                val decoded = if (anchor.kind == "text" && bytes != null) {
+                                    " \"${Gen3Text.decode(bytes)}\""
+                                } else {
+                                    ""
+                                }
                                 out += "${anchor.name} @0x${anchor.address.toString(16)} " +
-                                    "[${anchor.confidence}]: $hex"
+                                    "[${anchor.confidence}]: $hex$decoded"
                             }
                             is RetroArchClient.Result.Failure -> {
                                 out += "${anchor.name}: ${r.message}"
