@@ -5,6 +5,7 @@ import android.os.BatteryManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -44,20 +48,19 @@ import com.unboundds.companion.network.parseReadCoreMemoryResponse
 import com.unboundds.companion.pokemon.Gen3Decrypt
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
+import com.unboundds.companion.ui.theme.GoldHighlight
+import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
-import com.unboundds.companion.ui.theme.drawPortalCircle
-import com.unboundds.companion.ui.theme.drawPortalRect
+import com.unboundds.companion.ui.theme.drawPortalFill
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
 private const val POLL_INTERVAL_MS = 1000L
 
-// OLED-black theme, Unbound-title-screen flavored.
 private val HubBackground = Color(0xFF000000)
-private val HubPanel = Color(0xFFFCFCEF)        // map interior stays cream for now
-private val HubGold = Color(0xFFC8A028)
+private val HubPanel = Color(0xFFFCFCEF) // map interior stays cream for now
 private val HubTextLight = Color(0xFFF0EEDA)
 
 data class HubMon(val speciesId: Int, val level: Int)
@@ -117,8 +120,6 @@ fun HubScreen() {
             .background(HubBackground)
             .padding(10.dp),
     ) {
-        // Full-width top bar. Left side is intentionally empty for future
-        // widgets above the map; clock + battery sit on the right.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
@@ -131,41 +132,34 @@ fun HubScreen() {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Main area: map panel and sprite column share the same top edge.
         Row(modifier = Modifier.weight(1f)) {
             Box(
                 modifier = Modifier
-                    .weight(0.68f)
+                    .weight(0.62f)
                     .fillMaxHeight()
-                    .background(HubGold, RoundedCornerShape(4.dp))
-                    .padding(2.dp)
-                    .background(HubPanel, RoundedCornerShape(3.dp)),
+                    .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
+                    .background(HubPanel, RoundedCornerShape(6.dp))
+                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
             }
 
-            Column(
+            // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
+            Row(
                 modifier = Modifier
-                    .weight(0.32f)
+                    .weight(0.38f)
                     .fillMaxHeight()
-                    .padding(start = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .padding(start = 8.dp),
             ) {
-                repeat(6) { i ->
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        party.getOrNull(i)?.let { mon -> MonCircle(mon, phase) }
-                    }
-                }
+                PartyColumn(mons = party.drop(3).take(3), phase = phase, modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(6.dp))
+                PartyColumn(mons = party.take(3), phase = phase, modifier = Modifier.weight(1f))
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Bottom buttons: gold pixel border, animated portal interior. Not wired up yet.
         Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
             HubButton("OPPONENT", phase, modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
@@ -175,10 +169,28 @@ fun HubScreen() {
 }
 
 @Composable
+private fun PartyColumn(mons: List<HubMon>, phase: Int, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+        repeat(3) { i ->
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) }
+            }
+        }
+    }
+}
+
+@Composable
 private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
+            .clip(RoundedCornerShape(8.dp))
+            .border(2.dp, GoldOutline, RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
         Canvas(modifier = Modifier.matchParentSize()) {
-            drawPortalRect(phase, cellPx = 4.dp.toPx())
+            drawPortalFill(phase, cellPx = 4.dp.toPx())
         }
         OutlinedPixelText(label, fontSize = 11.sp)
     }
@@ -190,12 +202,19 @@ private fun MonCircle(mon: HubMon, phase: Int) {
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
     Box(contentAlignment = Alignment.Center) {
-        Box(modifier = Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
+                .clip(CircleShape)
+                .border(2.dp, GoldOutline, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
             Canvas(modifier = Modifier.matchParentSize()) {
-                drawPortalCircle(phase, cellPx = 4.dp.toPx())
+                drawPortalFill(phase, cellPx = 4.dp.toPx())
             }
             if (sprite != null) {
-                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(44.dp))
+                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
             } else {
                 PixelText("?", color = HubTextLight, fontSize = 14.sp)
             }
@@ -236,7 +255,7 @@ private fun OutlinedPixelText(
     }
 }
 
-/** Battery glyph, light-on-black: outline + cap in gold, fill bar by charge. */
+/** Battery glyph, light-on-black: gold outline + cap, fill bar by charge. */
 @Composable
 private fun BatteryIcon(percent: Int) {
     val fillColor = when {
@@ -248,13 +267,13 @@ private fun BatteryIcon(percent: Int) {
         Canvas(modifier = Modifier.size(width = 26.dp, height = 13.dp)) {
             val bodyWidth = size.width * 0.88f
             drawRoundRect(
-                color = HubGold,
+                color = GoldOutline,
                 size = Size(bodyWidth, size.height),
                 cornerRadius = CornerRadius(3f, 3f),
                 style = Stroke(width = 3f),
             )
             drawRoundRect(
-                color = HubGold,
+                color = GoldOutline,
                 topLeft = Offset(bodyWidth + 2f, size.height * 0.28f),
                 size = Size(size.width - bodyWidth - 2f, size.height * 0.44f),
                 cornerRadius = CornerRadius(2f, 2f),

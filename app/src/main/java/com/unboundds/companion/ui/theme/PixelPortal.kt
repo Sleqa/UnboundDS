@@ -19,30 +19,26 @@ import kotlin.math.floor
 import kotlin.math.sqrt
 
 /**
- * Chunky-pixel animated "portal" rendering, styled after the swirling purple
- * O in Pokemon Unbound's title logo, with a gold pixel trim. Everything is
- * quantized to a coarse cell grid so it reads as pixel art, and the animation
- * phase advances in whole steps (discrete ticks, like a GBA palette cycle)
- * rather than smoothly.
+ * Chunky-pixel animated "portal" fill, styled after the swirling purple O in
+ * Pokemon Unbound's title logo. Quantized to a coarse cell grid and a
+ * discrete palette-cycling phase (whole steps, like a GBA palette animation)
+ * so it reads as pixel art rather than a smooth gradient. Deliberately a
+ * narrow band of one purple hue -- no near-black/near-white -- per feedback
+ * that a wider range read as "overpowering".
  */
 
-// Dark-to-bright purple cycle; palette rotation is what animates the swirl.
 private val PortalPalette = listOf(
-    Color(0xFF160522),
-    Color(0xFF2C0A48),
-    Color(0xFF48177A),
-    Color(0xFF6B26B0),
-    Color(0xFF9542DE),
-    Color(0xFFB86CF0),
-    Color(0xFF9542DE),
-    Color(0xFF6B26B0),
-    Color(0xFF48177A),
-    Color(0xFF2C0A48),
+    Color(0xFF7A30C0),
+    Color(0xFF6E2AB2),
+    Color(0xFF6226A4),
+    Color(0xFF561F96),
+    Color(0xFF6226A4),
+    Color(0xFF6E2AB2),
 )
-private val GoldLight = Color(0xFFF0D060)
-private val GoldDark = Color(0xFFB58A1E)
 
-/** Discrete animation tick, one palette step at a time. */
+val GoldOutline = Color(0xFFC8A028)
+val GoldHighlight = Color(0xFFF0D888)
+
 @Composable
 fun portalPhase(): Int {
     val transition = rememberInfiniteTransition(label = "portal")
@@ -50,7 +46,7 @@ fun portalPhase(): Int {
         initialValue = 0f,
         targetValue = PortalPalette.size.toFloat(),
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            animation = tween(durationMillis = 1400, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
         label = "phase",
@@ -66,59 +62,21 @@ private fun swirlColor(dx: Float, dy: Float, cell: Float, phase: Int): Color {
     return PortalPalette[idx]
 }
 
-/** Filled circle: gold checkered pixel ring around an animated purple swirl. */
-fun DrawScope.drawPortalCircle(phase: Int, cellPx: Float) {
-    val radius = size.minDimension / 2f
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val cols = ceil(size.width / cellPx).toInt()
-    val rows = ceil(size.height / cellPx).toInt()
-    val ringDepth = cellPx * 2f
-
-    for (row in 0 until rows) {
-        for (col in 0 until cols) {
-            val x = col * cellPx + cellPx / 2f
-            val y = row * cellPx + cellPx / 2f
-            val dx = x - cx
-            val dy = y - cy
-            val dist = sqrt(dx * dx + dy * dy)
-            if (dist > radius) continue
-
-            val color = if (dist > radius - ringDepth) {
-                if ((col + row) % 2 == 0) GoldLight else GoldDark
-            } else {
-                swirlColor(dx, dy, cellPx, phase)
-            }
-            drawRect(color, Offset(col * cellPx, row * cellPx), Size(cellPx, cellPx))
-        }
-    }
-}
-
-/**
- * Filled rectangle (for buttons): 1-cell gold checkered pixel border with
- * notched corners, animated purple swirl interior.
- */
-fun DrawScope.drawPortalRect(phase: Int, cellPx: Float) {
+/** Fills the whole draw area with the animated swirl -- caller clips to the desired shape. */
+fun DrawScope.drawPortalFill(phase: Int, cellPx: Float) {
     val cols = ceil(size.width / cellPx).toInt()
     val rows = ceil(size.height / cellPx).toInt()
     val cx = size.width / 2f
     val cy = size.height / 2f
-
     for (row in 0 until rows) {
         for (col in 0 until cols) {
-            val edgeCol = col == 0 || col == cols - 1
-            val edgeRow = row == 0 || row == rows - 1
-            // Skip the very corner cells -> stepped pixel-rounded corners.
-            if (edgeCol && edgeRow) continue
-
             val x = col * cellPx + cellPx / 2f
             val y = row * cellPx + cellPx / 2f
-            val color = if (edgeCol || edgeRow) {
-                if ((col + row) % 2 == 0) GoldLight else GoldDark
-            } else {
-                swirlColor(x - cx, y - cy, cellPx, phase)
-            }
-            drawRect(color, Offset(col * cellPx, row * cellPx), Size(cellPx, cellPx))
+            drawRect(
+                swirlColor(x - cx, y - cy, cellPx, phase),
+                Offset(col * cellPx, row * cellPx),
+                Size(cellPx, cellPx),
+            )
         }
     }
 }
