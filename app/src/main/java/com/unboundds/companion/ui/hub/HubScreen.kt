@@ -5,21 +5,19 @@ import android.os.BatteryManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,12 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -51,18 +47,19 @@ import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
+import com.unboundds.companion.ui.theme.drawPortalCircle
+import com.unboundds.companion.ui.theme.drawPortalRect
+import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
 private const val POLL_INTERVAL_MS = 1000L
 
-// Zelda-showcase-inspired light palette for the hub.
-private val HubBackground = Color(0xFFD9EDD2)   // pale mint
-private val HubPanel = Color(0xFFFCFCEF)        // cream
-private val HubBorderDark = Color(0xFF1A1A1A)   // near-black
-private val HubBorderGold = Color(0xFFC8A028)   // gold trim
-private val HubText = Color(0xFF223044)
-private val SpriteCircleBg = Color(0xFFBBDCB2)  // soft green behind sprites
+// OLED-black theme, Unbound-title-screen flavored.
+private val HubBackground = Color(0xFF000000)
+private val HubPanel = Color(0xFFFCFCEF)        // map interior stays cream for now
+private val HubGold = Color(0xFFC8A028)
+private val HubTextLight = Color(0xFFF0EEDA)
 
 data class HubMon(val speciesId: Int, val level: Int)
 
@@ -104,6 +101,7 @@ fun HubScreen() {
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
+    val phase = portalPhase()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -120,16 +118,27 @@ fun HubScreen() {
             .background(HubBackground)
             .padding(10.dp),
     ) {
-        // Main area: map panel left, status column right.
+        // Full-width top bar. Left side is intentionally empty for future
+        // widgets above the map; clock + battery sit on the right.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PixelText(time, color = HubTextLight, fontSize = 9.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            BatteryIcon(percent = battery)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Main area: map panel and sprite column share the same top edge.
         Row(modifier = Modifier.weight(1f)) {
-            // Map placeholder panel (Zelda-style framed box).
             Box(
                 modifier = Modifier
                     .weight(0.68f)
                     .fillMaxHeight()
-                    .background(HubBorderDark, RoundedCornerShape(6.dp))
-                    .padding(3.dp)
-                    .background(HubBorderGold, RoundedCornerShape(4.dp))
+                    .background(HubGold, RoundedCornerShape(4.dp))
                     .padding(2.dp)
                     .background(HubPanel, RoundedCornerShape(3.dp)),
                 contentAlignment = Alignment.Center,
@@ -137,39 +146,19 @@ fun HubScreen() {
                 PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
             }
 
-            // Right status column: clock + battery on top, party sprites below.
             Column(
                 modifier = Modifier
                     .weight(0.32f)
                     .fillMaxHeight()
                     .padding(start = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PixelText(time, color = HubText, fontSize = 9.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    BatteryIcon(percent = battery)
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // 6 sprite slots, each weighted so all always fit on screen.
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    repeat(6) { i ->
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            party.getOrNull(i)?.let { mon -> MonCircle(mon) }
-                        }
+                repeat(6) { i ->
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        party.getOrNull(i)?.let { mon -> MonCircle(mon, phase) }
                     }
                 }
             }
@@ -177,68 +166,63 @@ fun HubScreen() {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Bottom buttons, Zelda-style: black with gold border. Not wired up yet.
+        // Bottom buttons: gold pixel border, animated portal interior. Not wired up yet.
         Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
-            HubButton("OPPONENT", modifier = Modifier.weight(1f))
+            HubButton("OPPONENT", phase, modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            HubButton("DEX", modifier = Modifier.weight(1f))
+            HubButton("DEX", phase, modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun HubButton(label: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .background(HubBorderDark, RoundedCornerShape(6.dp))
-            .border(2.dp, HubBorderGold, RoundedCornerShape(6.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        PixelText(label, color = Color.White, fontSize = 11.sp)
+private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            drawPortalRect(phase, cellPx = 4.dp.toPx())
+        }
+        OutlinedPixelText(label, fontSize = 11.sp)
     }
 }
 
 @Composable
-private fun MonCircle(mon: HubMon) {
+private fun MonCircle(mon: HubMon, phase: Int) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
     Box(contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(SpriteCircleBg)
-                .border(2.dp, HubBorderDark, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
+        Box(modifier = Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawPortalCircle(phase, cellPx = 4.dp.toPx())
+            }
             if (sprite != null) {
-                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(46.dp))
+                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(44.dp))
             } else {
-                PixelText("?", fontSize = 14.sp)
+                PixelText("?", color = HubTextLight, fontSize = 14.sp)
             }
         }
-        // Level tag, bottom-right, overlapping the circle; outlined so it stays legible.
         OutlinedPixelText(
             text = "L${mon.level}",
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 0.dp),
+            fontSize = 8.sp,
+            modifier = Modifier.align(Alignment.BottomEnd),
         )
     }
 }
 
-/** White pixel text with a dark stroke outline so it reads over any sprite/background. */
+/** White pixel text with a dark stroke outline so it reads over the portal art. */
 @Composable
-private fun OutlinedPixelText(text: String, modifier: Modifier = Modifier) {
+private fun OutlinedPixelText(
+    text: String,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+) {
     Box(modifier = modifier) {
         Text(
             text = text,
             style = TextStyle(
                 fontFamily = RetroTheme.pixelFont,
-                fontSize = 8.sp,
-                color = HubBorderDark,
+                fontSize = fontSize,
+                color = Color(0xFF14041E),
                 drawStyle = Stroke(width = 6f),
             ),
         )
@@ -246,14 +230,14 @@ private fun OutlinedPixelText(text: String, modifier: Modifier = Modifier) {
             text = text,
             style = TextStyle(
                 fontFamily = RetroTheme.pixelFont,
-                fontSize = 8.sp,
+                fontSize = fontSize,
                 color = Color.White,
             ),
         )
     }
 }
 
-/** Simple crisp battery glyph: body outline, fill bar by percent, small cap. */
+/** Battery glyph, light-on-black: outline + cap in gold, fill bar by charge. */
 @Composable
 private fun BatteryIcon(percent: Int) {
     val fillColor = when {
@@ -264,29 +248,29 @@ private fun BatteryIcon(percent: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Canvas(modifier = Modifier.size(width = 26.dp, height = 13.dp)) {
             val bodyWidth = size.width * 0.88f
-            // Outline
             drawRoundRect(
-                color = HubBorderDark,
+                color = HubGold,
                 size = Size(bodyWidth, size.height),
                 cornerRadius = CornerRadius(3f, 3f),
                 style = Stroke(width = 3f),
             )
-            // Cap
             drawRoundRect(
-                color = HubBorderDark,
+                color = HubGold,
                 topLeft = Offset(bodyWidth + 2f, size.height * 0.28f),
                 size = Size(size.width - bodyWidth - 2f, size.height * 0.44f),
                 cornerRadius = CornerRadius(2f, 2f),
             )
-            // Fill
             val inset = 5f
             drawRect(
                 color = fillColor,
                 topLeft = Offset(inset, inset),
-                size = Size((bodyWidth - inset * 2f) * (percent.coerceIn(0, 100) / 100f), size.height - inset * 2f),
+                size = Size(
+                    (bodyWidth - inset * 2f) * (percent.coerceIn(0, 100) / 100f),
+                    size.height - inset * 2f,
+                ),
             )
         }
         Spacer(modifier = Modifier.width(4.dp))
-        PixelText("$percent%", color = HubText, fontSize = 8.sp)
+        PixelText("$percent%", color = HubTextLight, fontSize = 8.sp)
     }
 }
