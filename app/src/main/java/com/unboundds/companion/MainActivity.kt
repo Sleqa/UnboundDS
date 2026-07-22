@@ -20,10 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.unboundds.companion.ui.anchors.AnchorScreen
 import com.unboundds.companion.ui.diff.DiffScannerScreen
+import com.unboundds.companion.ui.hub.HubScreen
 import com.unboundds.companion.ui.inspector.InspectorScreen
-import com.unboundds.companion.ui.party.PartyScreen
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
 
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
                     if (showDevTools.value) {
                         DevTools(onClose = { showDevTools.value = false })
                     } else {
-                        PartyScreen()
+                        HubScreen()
                     }
                 }
             }
@@ -73,7 +74,7 @@ class MainActivity : ComponentActivity() {
 @androidx.compose.runtime.Composable
 private fun DevTools(onClose: () -> Unit) {
     var screen by remember { mutableStateOf(DevScreen.Inspector) }
-    Column(modifier = Modifier.fillMaxSize().background(RetroTheme.background)) {
+    Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
         Row(modifier = Modifier.padding(8.dp)) {
             Button(onClick = { screen = DevScreen.Inspector }) { Text("Inspector") }
             Button(onClick = { screen = DevScreen.DiffScanner }, modifier = Modifier.padding(start = 4.dp)) { Text("Diff") }
@@ -82,7 +83,7 @@ private fun DevTools(onClose: () -> Unit) {
         }
         PixelText(
             "DEV TOOLS - R3+L3 TO HIDE",
-            color = RetroTheme.textOnDark,
+            color = RetroTheme.text,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
         when (screen) {
