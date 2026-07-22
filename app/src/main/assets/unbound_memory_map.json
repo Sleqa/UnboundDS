@@ -47,6 +47,22 @@
     "confidence": "firered-anchor",
     "note": "Battle only"
   },
+  "overworldObjects": {
+    "name": "gObjectEvents",
+    "slotStride": 36,
+    "slotCount": 16,
+    "firstSlotAddress": "0x02036E38",
+    "confidence": "firered-anchor",
+    "note": "Slot 0 is the player. Community FireRed RAM map, cross-referenced 2026-07-22. Sub-field offsets (x/y coords, facing direction) are NOT mapped yet -- struct is opaque for now. Use the diff scanner while walking to locate the x/y bytes within this 36-byte block."
+  },
+  "scriptVars": {
+    "name": "gSpecialVars (0x8000-0x800F)",
+    "slotStride": 2,
+    "slotCount": 16,
+    "firstSlotAddress": "0x020370B8",
+    "confidence": "firered-anchor",
+    "note": "Engine-level scratch variables used by map scripts. Likely where Unbound's custom mission/difficulty/story flags live, given it heavily extends the script system. Values are transient/context-dependent, not fixed per-var meanings."
+  },
   "anchors": [
     { "name": "playerName", "address": "0x020245CC", "size": 8, "confidence": "firered-anchor", "kind": "text",
       "note": "Read as all zeros on real Unbound hardware 2026-07-22 — likely shifted, needs re-discovery via diff scanner." },
@@ -57,6 +73,9 @@
     { "name": "entryWarpId", "address": "0x02031DB6", "size": 1, "confidence": "firered-anchor" },
     { "name": "entryX", "address": "0x02031DB8", "size": 2, "confidence": "firered-anchor" },
     { "name": "entryY", "address": "0x02031DBA", "size": 2, "confidence": "firered-anchor" },
+    { "name": "currentMapBank", "address": "0x02031DBC", "size": 1, "confidence": "firered-anchor",
+      "note": "Live current map, not just the entry-warp snapshot like prevMapBank -- this is what a map feature should actually read." },
+    { "name": "currentMapNumber", "address": "0x02031DBD", "size": 1, "confidence": "firered-anchor" },
     { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
       "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." },
     { "name": "repelStepCount", "address": "0x0202656C", "size": 1, "confidence": "unbound-verified",

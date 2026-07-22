@@ -25,22 +25,27 @@ data class MemoryMap(
     val unboundVersion: String,
     val baseGame: String,
     val party: PartyLayout,
+    val overworldObjects: PartyLayout,
+    val scriptVars: PartyLayout,
     val anchors: List<Anchor>,
 ) {
     companion object {
+        private fun parseLayout(obj: JSONObject): PartyLayout = PartyLayout(
+            firstSlotAddress = obj.getString("firstSlotAddress").parseHex(),
+            slotStride = obj.getInt("slotStride"),
+            slotCount = obj.getInt("slotCount"),
+            confidence = obj.getString("confidence"),
+        )
+
         /** Loads the bundled seed map from assets/unbound_memory_map.json. */
         fun load(context: Context): MemoryMap {
             val json = context.assets.open("unbound_memory_map.json")
                 .bufferedReader().use { it.readText() }
             val root = JSONObject(json)
 
-            val partyObj = root.getJSONObject("party")
-            val party = PartyLayout(
-                firstSlotAddress = partyObj.getString("firstSlotAddress").parseHex(),
-                slotStride = partyObj.getInt("slotStride"),
-                slotCount = partyObj.getInt("slotCount"),
-                confidence = partyObj.getString("confidence"),
-            )
+            val party = parseLayout(root.getJSONObject("party"))
+            val overworldObjects = parseLayout(root.getJSONObject("overworldObjects"))
+            val scriptVars = parseLayout(root.getJSONObject("scriptVars"))
 
             val anchorsArr = root.getJSONArray("anchors")
             val anchors = (0 until anchorsArr.length()).map { i ->
@@ -59,6 +64,8 @@ data class MemoryMap(
                 unboundVersion = root.getString("unboundVersion"),
                 baseGame = root.getString("baseGame"),
                 party = party,
+                overworldObjects = overworldObjects,
+                scriptVars = scriptVars,
                 anchors = anchors,
             )
         }

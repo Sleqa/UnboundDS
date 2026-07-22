@@ -72,6 +72,31 @@ fun AnchorScreen() {
                         }
                     }
                     out += ""
+                    out += "— Player overworld object (${map.overworldObjects.confidence}) —"
+                    when (val r = client.readCoreMemory(map.overworldObjects.firstSlotAddress, map.overworldObjects.slotStride)) {
+                        is RetroArchClient.Result.Success -> {
+                            val bytes = parseReadCoreMemoryResponse(r.response)
+                            val hex = bytes?.joinToString(" ") { "%02X".format(it) } ?: "rejected"
+                            out += "OW0 @0x${map.overworldObjects.firstSlotAddress.toString(16)}: $hex"
+                        }
+                        is RetroArchClient.Result.Failure -> out += "OW0: ${r.message}"
+                    }
+
+                    out += ""
+                    out += "— Script vars 0x8000-0x800F (${map.scriptVars.confidence}) —"
+                    for (i in 0 until map.scriptVars.slotCount) {
+                        val addr = map.scriptVars.firstSlotAddress + i * map.scriptVars.slotStride
+                        when (val r = client.readCoreMemory(addr, map.scriptVars.slotStride)) {
+                            is RetroArchClient.Result.Success -> {
+                                val bytes = parseReadCoreMemoryResponse(r.response)
+                                val value = bytes?.let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) }
+                                out += "Var 0x${(0x8000 + i).toString(16)}: ${value ?: "rejected"}"
+                            }
+                            is RetroArchClient.Result.Failure -> out += "Var 0x${(0x8000 + i).toString(16)}: ${r.message}"
+                        }
+                    }
+
+                    out += ""
                     out += "— Anchors —"
                     for (anchor in map.anchors) {
                         when (val r = client.readCoreMemory(anchor.address, anchor.size)) {
