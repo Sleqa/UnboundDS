@@ -61,7 +61,11 @@ fun AnchorScreen() {
                     // for reference only, not a trust gate.
                     val checksumTag = if (decrypted?.checksumValid == true) "matches vanilla formula" else "differs (expected for Unbound)"
                     val speciesLine = if (decrypted != null) {
-                        " | species #${decrypted.speciesId} \"${decrypted.nickname}\" [checksum: $checksumTag]"
+                        val moveList = decrypted.moves.indices.joinToString(", ") { i ->
+                            "#${decrypted.moves[i]} (${decrypted.pp[i]}pp)"
+                        }
+                        " | species #${decrypted.speciesId} \"${decrypted.nickname}\" " +
+                            "moves: [$moveList] [checksum: $checksumTag]"
                     } else {
                         ""
                     }
