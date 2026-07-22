@@ -55,9 +55,13 @@ fun AnchorScreen() {
                     }
                     val stats = PartyDecoder.decode(bytes)
                     val decrypted = Gen3Decrypt.decode(bytes)
-                    val checksumTag = if (decrypted?.checksumValid == true) "OK" else "FAIL"
+                    // Unbound's engine checksum consistently fails to match vanilla's formula even
+                    // when species/moves/nickname decode correctly (confirmed on real hardware
+                    // 2026-07-22) -- Unbound likely folds extra data into its own checksum. Shown
+                    // for reference only, not a trust gate.
+                    val checksumTag = if (decrypted?.checksumValid == true) "matches vanilla formula" else "differs (expected for Unbound)"
                     val speciesLine = if (decrypted != null) {
-                        " | species #${decrypted.speciesId} \"${decrypted.nickname}\" [checksum $checksumTag]"
+                        " | species #${decrypted.speciesId} \"${decrypted.nickname}\" [checksum: $checksumTag]"
                     } else {
                         ""
                     }
@@ -78,7 +82,10 @@ fun AnchorScreen() {
         Text("Anchor verification", style = MaterialTheme.typography.headlineSmall)
         Text(
             "Reads seeded FireRed anchors live. Matches against your real party/data " +
-                "confirm which addresses hold in Unbound. Enemy party only populates during battle.",
+                "confirm which addresses hold in Unbound. Enemy party only populates during battle. " +
+                "The checksum tag is informational -- Unbound's engine checksum doesn't match vanilla's " +
+                "formula even on confirmed-correct decodes, so trust species/nickname/stats matching " +
+                "your real data, not the checksum.",
             style = MaterialTheme.typography.bodySmall,
         )
 

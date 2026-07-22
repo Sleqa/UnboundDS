@@ -24,6 +24,7 @@
     "firstSlotAddress": "0x02024284",
     "confidence": "unbound-verified",
     "note2": "Confirmed on real hardware 2026-07-22: decoded Lv/HP/stats matched the actual in-game party exactly.",
+    "note3": "Species/nickname decode (Gen3Decrypt) confirmed correct 2026-07-22 across all 6 party slots + full enemy team, despite the struct's built-in checksum failing every time. Layout/decryption is right; Unbound most likely changed the checksum FORMULA (e.g. folding in extra data for its custom Mega Evolution/mission systems) rather than the substructure layout. Treat checksum as informational, not a trust gate.",
     "note": "6 x 100-byte Gen3 mon structs. Level/HP/stats at offsets 0x54-0x63 are UNENCRYPTED and directly readable for verification.",
     "unencryptedFields": {
       "personality": { "offset": 0, "size": 4 },
@@ -44,9 +45,8 @@
     "slotStride": 100,
     "slotCount": 6,
     "firstSlotAddress": "0x0202402C",
-    "confidence": "firered-anchor",
-    "note": "Battle only"
-  },
+    "confidence": "unbound-verified",
+    "note": "Battle only. Confirmed 2026-07-22: decoded species/nicknames matched the real enemy team." },
   "overworldObjects": {
     "name": "gObjectEvents",
     "slotStride": 36,

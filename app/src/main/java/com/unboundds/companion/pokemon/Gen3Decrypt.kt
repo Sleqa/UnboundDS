@@ -6,10 +6,15 @@ package com.unboundds.companion.pokemon
  *
  * The block is split into 4 x 12-byte substructures (Growth/Attacks/EVs/Misc)
  * whose ORDER depends on `personality % 24`, then each of the block's 12
- * 32-bit words is XORed with `personality XOR otId`. Self-verifying: the
- * struct carries its own checksum (offset 0x1C) that only matches if the
- * substructure order AND decryption key were both correct -- checksumValid
- * must be true before trusting speciesId/experience/moves.
+ * 32-bit words is XORed with `personality XOR otId`.
+ *
+ * checksumValid mirrors vanilla FireRed's own struct checksum (offset 0x1C).
+ * On Pokemon Unbound specifically it reads FALSE even when species/nickname/
+ * moves are independently confirmed correct against real hardware (verified
+ * 2026-07-22 across a full party + enemy team) -- Unbound's engine appears to
+ * compute the checksum differently (likely folding in data for its custom
+ * Mega Evolution/mission systems) without changing the substructure layout.
+ * Treat checksumValid as informational on Unbound, not a correctness gate.
  */
 object Gen3Decrypt {
     // Row i = substructure order for personality % 24 == i.
