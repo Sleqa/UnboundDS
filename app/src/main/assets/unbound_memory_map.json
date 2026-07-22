@@ -55,7 +55,13 @@
     "slotCount": 16,
     "firstSlotAddress": "0x02036E38",
     "confidence": "firered-anchor",
-    "note": "Slot 0 is the player. Community FireRed RAM map, cross-referenced 2026-07-22. Sub-field offsets (x/y coords, facing direction) are NOT mapped yet -- struct is opaque for now. Use the diff scanner while walking to locate the x/y bytes within this 36-byte block."
+    "note": "Slot 0 is the player. Community FireRed RAM map, cross-referenced 2026-07-22. Sub-field offsets (x/y coords, facing direction) are NOT mapped yet -- struct is opaque for now. Use the diff scanner while walking to locate the x/y bytes within this 36-byte block.",
+    "candidateFields": {
+      "coordAxisA_low": { "offset": 16, "size": 1, "confidence": "candidate",
+        "note": "0x02036E48 (obj+0x10). Changed 0x1F->0x1E (-1) on a single step, 2026-07-22. Likely the low byte of a u16 coordinate (high byte didn't change, consistent with a small position value under 256) -- one of currentCoords.x/y or a related field." },
+      "coordAxisA_low_2": { "offset": 20, "size": 1, "confidence": "candidate",
+        "note": "0x02036E4C (obj+0x14), exactly 4 bytes after coordAxisA_low. Changed identically (0x1F->0x1E) on the SAME step -- both moved together, which doesn't fit two independent x/y axes changing on one cardinal step. Likely current+previous copies of the SAME axis (used for movement-animation interpolation), not x and y. Needs a perpendicular-direction step to find the other axis and confirm this theory." }
+    }
   },
   "scriptVars": {
     "name": "gSpecialVars (0x8000-0x800F)",
@@ -75,9 +81,10 @@
     { "name": "entryWarpId", "address": "0x02031DB6", "size": 1, "confidence": "firered-anchor" },
     { "name": "entryX", "address": "0x02031DB8", "size": 2, "confidence": "firered-anchor" },
     { "name": "entryY", "address": "0x02031DBA", "size": 2, "confidence": "firered-anchor" },
-    { "name": "currentMapBank", "address": "0x02031DBC", "size": 1, "confidence": "firered-anchor",
-      "note": "Live current map, not just the entry-warp snapshot like prevMapBank -- this is what a map feature should actually read." },
-    { "name": "currentMapNumber", "address": "0x02031DBD", "size": 1, "confidence": "firered-anchor" },
+    { "name": "currentMapBank", "address": "0x02031DBC", "size": 1, "confidence": "unbound-verified",
+      "note": "Confirmed 2026-07-22: changed consistently and distinctly moving between buildings and routes. Live current map, not just the entry-warp snapshot like prevMapBank." },
+    { "name": "currentMapNumber", "address": "0x02031DBD", "size": 1, "confidence": "unbound-verified",
+      "note": "Confirmed 2026-07-22 alongside currentMapBank." },
     { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
       "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." },
     { "name": "repelStepCount", "address": "0x0202656C", "size": 1, "confidence": "unbound-verified",
