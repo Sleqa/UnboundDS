@@ -1,19 +1,16 @@
 package com.unboundds.companion.ui.party
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,9 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.memory.PartyLayout
 import com.unboundds.companion.network.RetroArchClient
@@ -33,6 +30,10 @@ import com.unboundds.companion.pokemon.Gen3Decrypt
 import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
+import com.unboundds.companion.ui.theme.PixelHpBar
+import com.unboundds.companion.ui.theme.PixelText
+import com.unboundds.companion.ui.theme.RetroPanel
+import com.unboundds.companion.ui.theme.RetroTheme
 import kotlinx.coroutines.delay
 
 private const val POLL_INTERVAL_MS = 1000L
@@ -78,7 +79,7 @@ fun PartyScreen() {
 
     var party by remember { mutableStateOf<List<PartyMonUi>>(emptyList()) }
     var enemy by remember { mutableStateOf<List<PartyMonUi>>(emptyList()) }
-    var status by remember { mutableStateOf("Connecting…") }
+    var status by remember { mutableStateOf("CONNECTING...") }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -86,66 +87,57 @@ fun PartyScreen() {
             val newEnemy = readParty(client, map.enemyParty, names)
             party = newParty
             enemy = newEnemy
-            status = if (newParty.isEmpty()) "No party data — is RetroArch running with Unbound loaded?" else ""
+            status = if (newParty.isEmpty()) "NO DATA - IS UNBOUND RUNNING?" else ""
             delay(POLL_INTERVAL_MS)
         }
     }
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .fillMaxSize()
+            .background(RetroTheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(12.dp),
     ) {
-        Text("Party", style = MaterialTheme.typography.headlineSmall)
+        PixelText("PARTY", color = RetroTheme.textOnDark, fontSize = 14.sp)
         if (status.isNotEmpty()) {
-            Text(status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+            PixelText(status, color = RetroTheme.textOnDark, fontSize = 8.sp, modifier = Modifier.padding(top = 8.dp))
         }
-        party.forEach { mon -> MonRow(mon) }
+        party.forEach { mon -> MonPanel(mon) }
 
         if (enemy.isNotEmpty()) {
-            Text("Enemy", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 16.dp))
-            enemy.forEach { mon -> MonRow(mon) }
+            PixelText("ENEMY", color = RetroTheme.accent, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+            enemy.forEach { mon -> MonPanel(mon) }
         }
     }
 }
 
 @Composable
-private fun MonRow(mon: PartyMonUi) {
+private fun MonPanel(mon: PartyMonUi) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
-    Surface(
+    RetroPanel(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 1.dp,
+            .padding(top = 8.dp),
     ) {
-        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
                 if (sprite != null) {
-                    Image(bitmap = sprite, contentDescription = mon.speciesName, modifier = Modifier.size(48.dp))
+                    Image(bitmap = sprite, contentDescription = mon.speciesName, modifier = Modifier.size(56.dp))
                 } else {
-                    Text("?", style = MaterialTheme.typography.titleLarge)
+                    PixelText("?", fontSize = 20.sp)
                 }
             }
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                Text("${mon.nickname}  (${mon.speciesName})  Lv${mon.level}", style = MaterialTheme.typography.bodyMedium)
-                val hpFraction = if (mon.maxHp > 0) mon.currentHp.toFloat() / mon.maxHp else 0f
-                val hpColor = when {
-                    hpFraction > 0.5f -> Color(0xFF4CAF50)
-                    hpFraction > 0.2f -> Color(0xFFFFC107)
-                    else -> Color(0xFFF44336)
-                }
-                LinearProgressIndicator(
-                    progress = { hpFraction.coerceIn(0f, 1f) },
-                    color = hpColor,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
+            Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
+                PixelText(mon.nickname.uppercase(), fontSize = 10.sp)
+                PixelText("${mon.speciesName.uppercase()}  L${mon.level}", fontSize = 8.sp, modifier = Modifier.padding(top = 4.dp))
+                PixelHpBar(
+                    fraction = if (mon.maxHp > 0) mon.currentHp.toFloat() / mon.maxHp else 0f,
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
                 )
-                Text("${mon.currentHp}/${mon.maxHp} HP", style = MaterialTheme.typography.bodySmall)
+                PixelText("HP ${mon.currentHp}/${mon.maxHp}", fontSize = 8.sp, modifier = Modifier.padding(top = 3.dp))
             }
         }
     }

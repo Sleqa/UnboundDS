@@ -1,8 +1,10 @@
 package com.unboundds.companion
 
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,32 +24,71 @@ import com.unboundds.companion.ui.anchors.AnchorScreen
 import com.unboundds.companion.ui.diff.DiffScannerScreen
 import com.unboundds.companion.ui.inspector.InspectorScreen
 import com.unboundds.companion.ui.party.PartyScreen
+import com.unboundds.companion.ui.theme.PixelText
+import com.unboundds.companion.ui.theme.RetroTheme
 
-private enum class Screen { Party, Inspector, DiffScanner, Anchors }
+private enum class DevScreen { Inspector, DiffScanner, Anchors }
 
 class MainActivity : ComponentActivity() {
+
+    // Toggled by the R3+L3 controller combo to reveal the developer tools.
+    private val showDevTools: MutableState<Boolean> = mutableStateOf(false)
+    private var l3Down = false
+    private var r3Down = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    var screen by remember { mutableStateOf(Screen.Party) }
-                    Column {
-                        Row(modifier = Modifier.padding(8.dp)) {
-                            Button(onClick = { screen = Screen.Party }) { Text("Party") }
-                            Button(onClick = { screen = Screen.Inspector }) { Text("Inspector") }
-                            Button(onClick = { screen = Screen.DiffScanner }) { Text("Diff") }
-                            Button(onClick = { screen = Screen.Anchors }) { Text("Anchors") }
-                        }
-                        when (screen) {
-                            Screen.Party -> PartyScreen()
-                            Screen.Inspector -> InspectorScreen()
-                            Screen.DiffScanner -> DiffScannerScreen()
-                            Screen.Anchors -> AnchorScreen()
-                        }
+                    if (showDevTools.value) {
+                        DevTools(onClose = { showDevTools.value = false })
+                    } else {
+                        PartyScreen()
                     }
                 }
             }
+        }
+    }
+
+    // R3 = right stick click (THUMBR), L3 = left stick click (THUMBL). Both held
+    // together toggles the hidden developer tools. Requires the app to have input
+    // focus -- if the emulator has grabbed the controller this may not fire; the
+    // on-screen CLOSE button is the fallback.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_BUTTON_THUMBL -> l3Down = event.action == KeyEvent.ACTION_DOWN
+            KeyEvent.KEYCODE_BUTTON_THUMBR -> r3Down = event.action == KeyEvent.ACTION_DOWN
+        }
+        if (l3Down && r3Down && event.action == KeyEvent.ACTION_DOWN) {
+            showDevTools.value = !showDevTools.value
+            l3Down = false
+            r3Down = false
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun DevTools(onClose: () -> Unit) {
+    var screen by remember { mutableStateOf(DevScreen.Inspector) }
+    Column(modifier = Modifier.fillMaxSize().background(RetroTheme.background)) {
+        Row(modifier = Modifier.padding(8.dp)) {
+            Button(onClick = { screen = DevScreen.Inspector }) { Text("Inspector") }
+            Button(onClick = { screen = DevScreen.DiffScanner }, modifier = Modifier.padding(start = 4.dp)) { Text("Diff") }
+            Button(onClick = { screen = DevScreen.Anchors }, modifier = Modifier.padding(start = 4.dp)) { Text("Anchors") }
+            Button(onClick = onClose, modifier = Modifier.padding(start = 4.dp)) { Text("Close") }
+        }
+        PixelText(
+            "DEV TOOLS - R3+L3 TO HIDE",
+            color = RetroTheme.textOnDark,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        when (screen) {
+            DevScreen.Inspector -> InspectorScreen()
+            DevScreen.DiffScanner -> DiffScannerScreen()
+            DevScreen.Anchors -> AnchorScreen()
         }
     }
 }
