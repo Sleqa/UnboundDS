@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import com.unboundds.companion.memory.MapNames
 import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.memory.PartyLayout
 import com.unboundds.companion.network.RetroArchClient
@@ -44,6 +45,7 @@ fun AnchorScreen() {
     val client = remember { RetroArchClient() }
     val map = remember { MemoryMap.load(context) }
     val names = remember { NameTables.load(context) }
+    val mapNames = remember { MapNames.load(context) }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
 
@@ -149,10 +151,11 @@ fun AnchorScreen() {
                             is RetroArchClient.Result.Success -> {
                                 val bytes = parseReadCoreMemoryResponse(r.response)
                                 val hex = bytes?.joinToString(" ") { "%02X".format(it) } ?: "rejected"
-                                val decoded = if (anchor.kind == "text" && bytes != null) {
-                                    " \"${Gen3Text.decode(bytes)}\""
-                                } else {
-                                    ""
+                                val decoded = when {
+                                    anchor.kind == "text" && bytes != null -> " \"${Gen3Text.decode(bytes)}\""
+                                    anchor.name == "regionMapSectionId" && bytes != null ->
+                                        " \"${mapNames.nameFor(bytes[0].toInt() and 0xFF)}\""
+                                    else -> ""
                                 }
                                 out += "${anchor.name} @0x${anchor.address.toString(16)} " +
                                     "[${anchor.confidence}]: $hex$decoded"
