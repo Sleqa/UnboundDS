@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -80,7 +79,7 @@ private fun DevTools(onClose: () -> Unit) {
                 }
             }
         }
-        Surface(modifier = Modifier.fillMaxWidth().weight(1f), color = Color.White) {
+        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
             when (screen) {
                 DevScreen.Inspector -> InspectorScreen()
                 DevScreen.DiffScanner -> DiffScannerScreen()
