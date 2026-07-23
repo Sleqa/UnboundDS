@@ -16,15 +16,21 @@ import org.json.JSONObject
 class NameTables private constructor(
     private val species: Map<Int, String>,
     private val moves: Map<Int, String>,
+    private val items: Map<Int, String>,
+    private val abilities: Map<Int, String>,
 ) {
     fun speciesName(id: Int): String = species[id] ?: "Unknown #$id"
     fun moveName(id: Int): String = moves[id] ?: "Unknown #$id"
+    fun itemName(id: Int): String = if (id == 0) "None" else items[id] ?: "Unknown #$id"
+    fun abilityName(id: Int): String = abilities[id] ?: "Unknown #$id"
 
     companion object {
         fun load(context: Context): NameTables {
             val species = loadTable(context, "species_names.json")
             val moves = loadTable(context, "move_names.json")
-            return NameTables(species, moves)
+            val items = loadTable(context, "item_names.json")
+            val abilities = loadTable(context, "ability_names.json")
+            return NameTables(species, moves, items, abilities)
         }
 
         private fun loadTable(context: Context, assetName: String): Map<Int, String> {

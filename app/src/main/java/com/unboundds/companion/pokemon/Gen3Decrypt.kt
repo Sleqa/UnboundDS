@@ -29,11 +29,16 @@ object Gen3Decrypt {
         val friendship: Int,
         val moves: IntArray,
         val pp: IntArray,
+        val hiddenAbilityFlag: Boolean,
     )
 
-    /** [struct] must be at least 0x38 bytes (through the Attacks substructure). */
+    /**
+     * [struct] must be at least 0x4C bytes -- through the Misc substructure's IV/flags
+     * word at 0x48, which packs the 6 IVs plus isEgg/hiddenAbility as the top two bits
+     * (per CFRU's `struct Pokemon` in include/pokemon.h). hiddenAbilityFlag is bit 31.
+     */
     fun decode(struct: ByteArray): Decoded? {
-        if (struct.size < 0x38) return null
+        if (struct.size < 0x4C) return null
 
         return Decoded(
             nickname = Gen3Text.decode(struct.copyOfRange(0x08, 0x08 + 10)),
@@ -47,6 +52,7 @@ object Gen3Decrypt {
                 struct[0x34].toInt() and 0xFF, struct[0x35].toInt() and 0xFF,
                 struct[0x36].toInt() and 0xFF, struct[0x37].toInt() and 0xFF,
             ),
+            hiddenAbilityFlag = (struct.u32(0x48) and (1L shl 31)) != 0L,
         )
     }
 

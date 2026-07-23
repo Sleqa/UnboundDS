@@ -8,18 +8,34 @@
     "cfru": "github.com/Skeli789/Complete-Fire-Red-Upgrade -- Unbound's own engine base (same author). Confirmed gWarp1/gEventObjects/gStringVar1-4/Var8000 addresses and the EventObject/WarpData struct layouts (coordinates, map bank/number) against this source, 2026-07-22. Its region_map_sections.h has '#ifndef UNBOUND //Modify this section' around the MAPSEC name list -- confirms Unbound has its own custom map name table NOT present in this repo, so location names still need live discovery."
   },
   "regions": {
-    "wram": { "start": "0x02000000", "end": "0x0203FFFF" },
-    "iram": { "start": "0x03000000", "end": "0x03007FFF" }
+    "wram": {
+      "start": "0x02000000",
+      "end": "0x0203FFFF"
+    },
+    "iram": {
+      "start": "0x03000000",
+      "end": "0x03007FFF"
+    }
   },
   "_confidence_levels": {
-    "firered-anchor": "Vanilla FireRed address from the pokefirered decomp / community RAM maps. NOT confirmed for Unbound — verify against a live read before trusting.",
+    "firered-anchor": "Vanilla FireRed address from the pokefirered decomp / community RAM maps. NOT confirmed for Unbound \u2014 verify against a live read before trusting.",
     "unbound-verified": "Confirmed against Unbound specifically (community GameShark code, or a live diff-scanner result that unambiguously matches a known value).",
-    "candidate": "Found via diff-scanner from ONE observed action. Plausible but not cross-verified — could be coincidental or part of an unrelated adjacent field. Needs a second, differently-shaped test before trusting."
+    "candidate": "Found via diff-scanner from ONE observed action. Plausible but not cross-verified \u2014 could be coincidental or part of an unrelated adjacent field. Needs a second, differently-shaped test before trusting."
   },
   "pointers": [
-    { "name": "gSaveBlock1Ptr", "address": "0x03005008", "size": 4, "confidence": "firered-anchor",
-      "note": "LE u32 pointing into WRAM; money, player position, flags, vars live inside this struct" },
-    { "name": "gSaveBlock2Ptr", "address": "0x0300500C", "size": 4, "confidence": "firered-anchor" }
+    {
+      "name": "gSaveBlock1Ptr",
+      "address": "0x03005008",
+      "size": 4,
+      "confidence": "firered-anchor",
+      "note": "LE u32 pointing into WRAM; money, player position, flags, vars live inside this struct"
+    },
+    {
+      "name": "gSaveBlock2Ptr",
+      "address": "0x0300500C",
+      "size": 4,
+      "confidence": "firered-anchor"
+    }
   ],
   "party": {
     "name": "gPlayerParty",
@@ -32,25 +48,91 @@
     "note6": "RESOLVED 2026-07-22: this build does NOT use standard Gen3 encryption/shuffling for the live party struct at all. Manually decrypted a raw hex dump and species was garbage at every position under every theory; meanwhile species read as plain, unencrypted, unshuffled correct data at the classic fixed offset 0x20 -- confirmed correct for every party member regardless of personality value. Matches CFRU's own `struct Pokemon` (include/pokemon.h) -- the live in-RAM party type, distinct from the save-file BoxPokemon format -- which stores Growth/Attacks/Condition/Misc in plaintext at their classic fixed offsets, never encrypted or shuffled. Gen3Decrypt.kt now just reads fields directly, no XOR/no reordering.",
     "note": "6 x 100-byte structs, entirely plaintext (no encryption/shuffling) in this build. Level/HP/stats at offsets 0x54-0x63; species/item/experience/moves/pp at 0x20-0x37 (see unencryptedFields).",
     "unencryptedFields": {
-      "personality": { "offset": 0, "size": 4 },
-      "otId": { "offset": 4, "size": 4 },
-      "nickname": { "offset": 8, "size": 10, "kind": "text" },
-      "otName": { "offset": 20, "size": 7, "kind": "text" },
-      "species": { "offset": 32, "size": 2 },
-      "heldItem": { "offset": 34, "size": 2 },
-      "experience": { "offset": 36, "size": 4 },
-      "friendship": { "offset": 41, "size": 1 },
-      "moves": { "offset": 44, "size": 8, "note": "4 x u16" },
-      "pp": { "offset": 52, "size": 4, "note": "4 x u8" },
-      "statusCondition": { "offset": 80, "size": 4 },
-      "level": { "offset": 84, "size": 1 },
-      "currentHp": { "offset": 86, "size": 2 },
-      "maxHp": { "offset": 88, "size": 2 },
-      "attack": { "offset": 90, "size": 2 },
-      "defense": { "offset": 92, "size": 2 },
-      "speed": { "offset": 94, "size": 2 },
-      "spAttack": { "offset": 96, "size": 2 },
-      "spDefense": { "offset": 98, "size": 2 }
+      "personality": {
+        "offset": 0,
+        "size": 4
+      },
+      "otId": {
+        "offset": 4,
+        "size": 4
+      },
+      "nickname": {
+        "offset": 8,
+        "size": 10,
+        "kind": "text"
+      },
+      "otName": {
+        "offset": 20,
+        "size": 7,
+        "kind": "text"
+      },
+      "species": {
+        "offset": 32,
+        "size": 2
+      },
+      "heldItem": {
+        "offset": 34,
+        "size": 2
+      },
+      "experience": {
+        "offset": 36,
+        "size": 4
+      },
+      "friendship": {
+        "offset": 41,
+        "size": 1
+      },
+      "moves": {
+        "offset": 44,
+        "size": 8,
+        "note": "4 x u16"
+      },
+      "pp": {
+        "offset": 52,
+        "size": 4,
+        "note": "4 x u8"
+      },
+      "miscIvFlags": {
+        "offset": 72,
+        "size": 4,
+        "note": "Packed u32: 6x5-bit IVs, bit30=isEgg, bit31=hiddenAbility. Ability itself is derived (species base ability1/ability2 + personality bit0, or hiddenAbility if this bit is set), not a stored field -- see BaseStats.kt."
+      },
+      "statusCondition": {
+        "offset": 80,
+        "size": 4
+      },
+      "level": {
+        "offset": 84,
+        "size": 1
+      },
+      "currentHp": {
+        "offset": 86,
+        "size": 2
+      },
+      "maxHp": {
+        "offset": 88,
+        "size": 2
+      },
+      "attack": {
+        "offset": 90,
+        "size": 2
+      },
+      "defense": {
+        "offset": 92,
+        "size": 2
+      },
+      "speed": {
+        "offset": 94,
+        "size": 2
+      },
+      "spAttack": {
+        "offset": 96,
+        "size": 2
+      },
+      "spDefense": {
+        "offset": 98,
+        "size": 2
+      }
     }
   },
   "enemyParty": {
@@ -59,7 +141,8 @@
     "slotCount": 6,
     "firstSlotAddress": "0x0202402C",
     "confidence": "unbound-verified",
-    "note": "Battle only. Confirmed 2026-07-22: decoded species/nicknames matched the real enemy team." },
+    "note": "Battle only. Confirmed 2026-07-22: decoded species/nicknames matched the real enemy team."
+  },
   "overworldObjects": {
     "name": "gEventObjects (struct EventObject, CFRU naming)",
     "slotStride": 36,
@@ -68,16 +151,40 @@
     "confidence": "unbound-verified",
     "note": "Slot 0 is the player. Address confirmed 2026-07-22 two ways: (1) matches gEventObjects in Skeli789/Complete-Fire-Red-Upgrade (Unbound's own engine base) include/new/ram_locs.h, and (2) matches the diff-scanner test result below.",
     "fields": {
-      "currentCoordsX": { "offset": 16, "size": 2, "signed": true, "confidence": "unbound-verified",
-        "note": "obj+0x10, struct Coords16 currentCoords.x from CFRU's include/global.fieldmap.h. Confirmed live 2026-07-22: single X-axis step changed the low byte 0x1F->0x1E." },
-      "currentCoordsY": { "offset": 18, "size": 2, "signed": true, "confidence": "unbound-verified",
-        "note": "obj+0x12, currentCoords.y. Confirmed live 2026-07-22: a pure south step changed 36->37, and facingDirection/movementDirection/movementActionId all shifted consistently with a completed southward step in the same diff." },
-      "previousCoordsX": { "offset": 20, "size": 2, "signed": true, "confidence": "unbound-verified",
-        "note": "obj+0x14, previousCoords.x. Confirmed live 2026-07-22 alongside currentCoordsX -- both sync to the same resting-tile value once a step animation completes, which is why they appeared identical in the diff test." },
-      "previousCoordsY": { "offset": 22, "size": 2, "signed": true, "confidence": "unbound-verified",
-        "note": "obj+0x16, previousCoords.y. Confirmed live 2026-07-22 alongside currentCoordsY." },
-      "facingDirection": { "offset": 24, "size": 1, "confidence": "firered-anchor",
-        "note": "obj+0x18, low nibble = facingDirection, high nibble = movementDirection, per CFRU's struct EventObject." }
+      "currentCoordsX": {
+        "offset": 16,
+        "size": 2,
+        "signed": true,
+        "confidence": "unbound-verified",
+        "note": "obj+0x10, struct Coords16 currentCoords.x from CFRU's include/global.fieldmap.h. Confirmed live 2026-07-22: single X-axis step changed the low byte 0x1F->0x1E."
+      },
+      "currentCoordsY": {
+        "offset": 18,
+        "size": 2,
+        "signed": true,
+        "confidence": "unbound-verified",
+        "note": "obj+0x12, currentCoords.y. Confirmed live 2026-07-22: a pure south step changed 36->37, and facingDirection/movementDirection/movementActionId all shifted consistently with a completed southward step in the same diff."
+      },
+      "previousCoordsX": {
+        "offset": 20,
+        "size": 2,
+        "signed": true,
+        "confidence": "unbound-verified",
+        "note": "obj+0x14, previousCoords.x. Confirmed live 2026-07-22 alongside currentCoordsX -- both sync to the same resting-tile value once a step animation completes, which is why they appeared identical in the diff test."
+      },
+      "previousCoordsY": {
+        "offset": 22,
+        "size": 2,
+        "signed": true,
+        "confidence": "unbound-verified",
+        "note": "obj+0x16, previousCoords.y. Confirmed live 2026-07-22 alongside currentCoordsY."
+      },
+      "facingDirection": {
+        "offset": 24,
+        "size": 1,
+        "confidence": "firered-anchor",
+        "note": "obj+0x18, low nibble = facingDirection, high nibble = movementDirection, per CFRU's struct EventObject."
+      }
     }
   },
   "scriptVars": {
@@ -89,46 +196,167 @@
     "note": "Engine-level scratch variables used by map scripts. Likely where Unbound's custom mission/difficulty/story flags live, given it heavily extends the script system. Values are transient/context-dependent, not fixed per-var meanings."
   },
   "anchors": [
-    { "name": "playerName", "address": "0x020245CC", "size": 8, "confidence": "firered-anchor", "kind": "text",
-      "note": "Read as all zeros on real Unbound hardware 2026-07-22 — likely shifted, needs re-discovery via diff scanner." },
-    { "name": "rivalName", "address": "0x02028F78", "size": 8, "confidence": "unbound-verified", "kind": "text",
-      "note": "Confirmed 2026-07-22: decodes to \"Ryan\", matches the player's real rival name." },
-    { "name": "prevMapBank", "address": "0x02031DB4", "size": 1, "confidence": "firered-anchor" },
-    { "name": "prevMapNumber", "address": "0x02031DB5", "size": 1, "confidence": "firered-anchor" },
-    { "name": "entryWarpId", "address": "0x02031DB6", "size": 1, "confidence": "firered-anchor" },
-    { "name": "entryX", "address": "0x02031DB8", "size": 2, "confidence": "firered-anchor" },
-    { "name": "entryY", "address": "0x02031DBA", "size": 2, "confidence": "firered-anchor" },
-    { "name": "currentMapBank", "address": "0x02031DBC", "size": 1, "confidence": "unbound-verified",
-      "note": "Confirmed 2026-07-22: changed consistently and distinctly moving between buildings and routes. Also matches gWarp1.mapGroup (struct WarpData) from CFRU's include/new/ram_locs.h / include/global.h." },
-    { "name": "currentMapNumber", "address": "0x02031DBD", "size": 1, "confidence": "unbound-verified",
-      "note": "Confirmed 2026-07-22 alongside currentMapBank. Matches gWarp1.mapNum." },
-    { "name": "currentWarpId", "address": "0x02031DBE", "size": 1, "confidence": "firered-anchor",
-      "note": "gWarp1.warpId, per CFRU's struct WarpData. Likely only meaningful right after a warp transition, not continuous like currentMapBank/Number." },
-    { "name": "currentWarpX", "address": "0x02031DC0", "size": 2, "confidence": "firered-anchor",
-      "note": "gWarp1.x. Warp-destination coordinate, not a continuously-updated live position -- use overworldObjects.currentCoordsX for that instead." },
-    { "name": "currentWarpY", "address": "0x02031DC2", "size": 2, "confidence": "firered-anchor",
-      "note": "gWarp1.y." },
-    { "name": "playerPartyCount", "address": "0x02024029", "size": 1, "confidence": "firered-anchor",
-      "note": "gPlayerPartyCount per CFRU. Number of occupied party slots -- read this before assuming all 6 party slots are valid Pokemon." },
-    { "name": "enemyPartyCount", "address": "0x0202402A", "size": 1, "confidence": "firered-anchor",
-      "note": "gEnemyPartyCount per CFRU. Battle only." },
-    { "name": "regionMapSectionId", "address": "0x02036E10", "size": 1, "confidence": "unbound-verified",
-      "note": "gMapHeader.regionMapSectionId (CFRU #defines this as gCurrentMapName -- include/new/ram_locs.h). Confirmed live 2026-07-22: Route 11=0x6F(111), Fallshore City=0x5E(94), Route 10=0x64(100) -- three distinct areas gave three distinct ids. Confirms Unbound fully remapped these from vanilla FireRed (vanilla 0x64 is Route 10 Fly-up, 0x5E is Celadon City -- neither matches), so there's no shortcut via the public table. Name lookup now comes from assets/unbound_map_names.json, a small hand-built id->name table grown from live testing (see that file)." },
-    { "name": "cheatItemSlot", "address": "0x02025804", "size": 2, "confidence": "unbound-verified",
-      "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot." },
-    { "name": "repelStepCount", "address": "0x0202656C", "size": 1, "confidence": "unbound-verified",
-      "note": "Confirmed 2026-07-22: using a Max Repel changed 0x00 -> 0xFA. 0xFA = 250 decimal, exactly the step count a Max Repel grants — strong, non-coincidental match. Try a regular Repel (should write 100/0x64) or Super Repel (200/0xC8) to double-confirm, and watch it count down while walking." },
-    { "name": "battleStateFlag", "address": "0x02025896", "size": 1, "confidence": "candidate",
-      "note": "Changed 0x00 -> 0x40 on entering a wild battle (before attacking), diff-scanner result from a single test. Hypothesis: a battle type/state flag byte. To confirm: check the value across a trainer battle, a double battle, and after the battle ends (should return to 0x00) - if it's consistently the same shape per battle type, it's real." },
-    { "name": "fieldCounterNearRepel", "address": "0x02026570", "size": 1, "confidence": "candidate",
-      "note": "Changed 0x04 -> 0x00 on entering a wild battle, diff-scanner result from a single test. Sits exactly 4 bytes after repelStepCount, so it may be an adjacent field in the same small struct rather than something battle-related. To confirm: watch it while walking with no repel active (does it count steps or encounters?), and see if it resets on other triggers besides battle entry." },
-    { "name": "stringBuffer0", "address": "0x02021CD0", "size": 32, "confidence": "unbound-verified", "kind": "text",
-      "note": "gStringVar1 per CFRU's include/new/ram_locs.h (matches address exactly). Confirmed live 2026-07-22 decoding real text ('Wed. 9:39 PM', the start-menu clock) -- general-purpose script string var, reused for lots of UI text including possibly the location banner. Read right after crossing into a new map to test that specifically." },
-    { "name": "stringBuffer1", "address": "0x02021CF0", "size": 20, "confidence": "unbound-verified", "kind": "text",
-      "note": "gStringVar2 per CFRU. Same location-banner test as stringBuffer0." },
-    { "name": "stringBuffer2", "address": "0x02021D04", "size": 20, "confidence": "unbound-verified", "kind": "text",
-      "note": "gStringVar3 per CFRU. Same location-banner test as stringBuffer0." },
-    { "name": "msgBoxString", "address": "0x02021D18", "size": 32, "confidence": "unbound-verified", "kind": "text",
-      "note": "gStringVar4 per CFRU (address matches; size still a guess since CFRU's #define doesn't state a length). Same location-banner test as stringBuffer0." }
+    {
+      "name": "playerName",
+      "address": "0x020245CC",
+      "size": 8,
+      "confidence": "firered-anchor",
+      "kind": "text",
+      "note": "Read as all zeros on real Unbound hardware 2026-07-22 \u2014 likely shifted, needs re-discovery via diff scanner."
+    },
+    {
+      "name": "rivalName",
+      "address": "0x02028F78",
+      "size": 8,
+      "confidence": "unbound-verified",
+      "kind": "text",
+      "note": "Confirmed 2026-07-22: decodes to \"Ryan\", matches the player's real rival name."
+    },
+    {
+      "name": "prevMapBank",
+      "address": "0x02031DB4",
+      "size": 1,
+      "confidence": "firered-anchor"
+    },
+    {
+      "name": "prevMapNumber",
+      "address": "0x02031DB5",
+      "size": 1,
+      "confidence": "firered-anchor"
+    },
+    {
+      "name": "entryWarpId",
+      "address": "0x02031DB6",
+      "size": 1,
+      "confidence": "firered-anchor"
+    },
+    {
+      "name": "entryX",
+      "address": "0x02031DB8",
+      "size": 2,
+      "confidence": "firered-anchor"
+    },
+    {
+      "name": "entryY",
+      "address": "0x02031DBA",
+      "size": 2,
+      "confidence": "firered-anchor"
+    },
+    {
+      "name": "currentMapBank",
+      "address": "0x02031DBC",
+      "size": 1,
+      "confidence": "unbound-verified",
+      "note": "Confirmed 2026-07-22: changed consistently and distinctly moving between buildings and routes. Also matches gWarp1.mapGroup (struct WarpData) from CFRU's include/new/ram_locs.h / include/global.h."
+    },
+    {
+      "name": "currentMapNumber",
+      "address": "0x02031DBD",
+      "size": 1,
+      "confidence": "unbound-verified",
+      "note": "Confirmed 2026-07-22 alongside currentMapBank. Matches gWarp1.mapNum."
+    },
+    {
+      "name": "currentWarpId",
+      "address": "0x02031DBE",
+      "size": 1,
+      "confidence": "firered-anchor",
+      "note": "gWarp1.warpId, per CFRU's struct WarpData. Likely only meaningful right after a warp transition, not continuous like currentMapBank/Number."
+    },
+    {
+      "name": "currentWarpX",
+      "address": "0x02031DC0",
+      "size": 2,
+      "confidence": "firered-anchor",
+      "note": "gWarp1.x. Warp-destination coordinate, not a continuously-updated live position -- use overworldObjects.currentCoordsX for that instead."
+    },
+    {
+      "name": "currentWarpY",
+      "address": "0x02031DC2",
+      "size": 2,
+      "confidence": "firered-anchor",
+      "note": "gWarp1.y."
+    },
+    {
+      "name": "playerPartyCount",
+      "address": "0x02024029",
+      "size": 1,
+      "confidence": "firered-anchor",
+      "note": "gPlayerPartyCount per CFRU. Number of occupied party slots -- read this before assuming all 6 party slots are valid Pokemon."
+    },
+    {
+      "name": "enemyPartyCount",
+      "address": "0x0202402A",
+      "size": 1,
+      "confidence": "firered-anchor",
+      "note": "gEnemyPartyCount per CFRU. Battle only."
+    },
+    {
+      "name": "regionMapSectionId",
+      "address": "0x02036E10",
+      "size": 1,
+      "confidence": "unbound-verified",
+      "note": "gMapHeader.regionMapSectionId (CFRU #defines this as gCurrentMapName -- include/new/ram_locs.h). Confirmed live 2026-07-22: Route 11=0x6F(111), Fallshore City=0x5E(94), Route 10=0x64(100) -- three distinct areas gave three distinct ids. Confirms Unbound fully remapped these from vanilla FireRed (vanilla 0x64 is Route 10 Fly-up, 0x5E is Celadon City -- neither matches), so there's no shortcut via the public table. Name lookup now comes from assets/unbound_map_names.json, a small hand-built id->name table grown from live testing (see that file)."
+    },
+    {
+      "name": "cheatItemSlot",
+      "address": "0x02025804",
+      "size": 2,
+      "confidence": "unbound-verified",
+      "note": "Target of Unbound item GameShark codes (e.g. 0x028A=Psychic Memory, 0x0250=Flying Gem). Likely a give-item/bag-add slot."
+    },
+    {
+      "name": "repelStepCount",
+      "address": "0x0202656C",
+      "size": 1,
+      "confidence": "unbound-verified",
+      "note": "Confirmed 2026-07-22: using a Max Repel changed 0x00 -> 0xFA. 0xFA = 250 decimal, exactly the step count a Max Repel grants \u2014 strong, non-coincidental match. Try a regular Repel (should write 100/0x64) or Super Repel (200/0xC8) to double-confirm, and watch it count down while walking."
+    },
+    {
+      "name": "battleStateFlag",
+      "address": "0x02025896",
+      "size": 1,
+      "confidence": "candidate",
+      "note": "Changed 0x00 -> 0x40 on entering a wild battle (before attacking), diff-scanner result from a single test. Hypothesis: a battle type/state flag byte. To confirm: check the value across a trainer battle, a double battle, and after the battle ends (should return to 0x00) - if it's consistently the same shape per battle type, it's real."
+    },
+    {
+      "name": "fieldCounterNearRepel",
+      "address": "0x02026570",
+      "size": 1,
+      "confidence": "candidate",
+      "note": "Changed 0x04 -> 0x00 on entering a wild battle, diff-scanner result from a single test. Sits exactly 4 bytes after repelStepCount, so it may be an adjacent field in the same small struct rather than something battle-related. To confirm: watch it while walking with no repel active (does it count steps or encounters?), and see if it resets on other triggers besides battle entry."
+    },
+    {
+      "name": "stringBuffer0",
+      "address": "0x02021CD0",
+      "size": 32,
+      "confidence": "unbound-verified",
+      "kind": "text",
+      "note": "gStringVar1 per CFRU's include/new/ram_locs.h (matches address exactly). Confirmed live 2026-07-22 decoding real text ('Wed. 9:39 PM', the start-menu clock) -- general-purpose script string var, reused for lots of UI text including possibly the location banner. Read right after crossing into a new map to test that specifically."
+    },
+    {
+      "name": "stringBuffer1",
+      "address": "0x02021CF0",
+      "size": 20,
+      "confidence": "unbound-verified",
+      "kind": "text",
+      "note": "gStringVar2 per CFRU. Same location-banner test as stringBuffer0."
+    },
+    {
+      "name": "stringBuffer2",
+      "address": "0x02021D04",
+      "size": 20,
+      "confidence": "unbound-verified",
+      "kind": "text",
+      "note": "gStringVar3 per CFRU. Same location-banner test as stringBuffer0."
+    },
+    {
+      "name": "msgBoxString",
+      "address": "0x02021D18",
+      "size": 32,
+      "confidence": "unbound-verified",
+      "kind": "text",
+      "note": "gStringVar4 per CFRU (address matches; size still a guess since CFRU's #define doesn't state a length). Same location-banner test as stringBuffer0."
+    }
   ]
 }

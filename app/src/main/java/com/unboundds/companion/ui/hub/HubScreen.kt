@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,9 +46,13 @@ import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.memory.PartyLayout
 import com.unboundds.companion.network.RetroArchClient
 import com.unboundds.companion.network.parseReadCoreMemoryResponse
+import com.unboundds.companion.pokemon.BaseStats
 import com.unboundds.companion.pokemon.Gen3Decrypt
+import com.unboundds.companion.pokemon.MoveData
+import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
+import com.unboundds.companion.ui.detail.PokemonDetailScreen
 import com.unboundds.companion.ui.theme.GoldHighlight
 import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
@@ -64,9 +69,28 @@ private val HubBackground = Color(0xFF000000)
 private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
 private val HubTextLight = Color(0xFFF0EEDA)
 
-data class HubMon(val speciesId: Int, val level: Int)
+data class HubMon(
+    val speciesId: Int,
+    val nickname: String,
+    val level: Int,
+    val currentHp: Int,
+    val maxHp: Int,
+    val attack: Int,
+    val defense: Int,
+    val spAttack: Int,
+    val spDefense: Int,
+    val speed: Int,
+    val heldItemId: Int,
+    val abilityId: Int,
+    val moves: List<Int>,
+    val pp: List<Int>,
+)
 
-private suspend fun readPartyMons(client: RetroArchClient, layout: PartyLayout): List<HubMon> {
+private suspend fun readPartyMons(
+    client: RetroArchClient,
+    layout: PartyLayout,
+    baseStats: BaseStats,
+): List<HubMon> {
     val out = mutableListOf<HubMon>()
     for (slot in 0 until layout.slotCount) {
         val addr = layout.firstSlotAddress + slot * layout.slotStride
@@ -76,7 +100,22 @@ private suspend fun readPartyMons(client: RetroArchClient, layout: PartyLayout):
         val stats = PartyDecoder.decode(bytes) ?: continue
         if (!stats.looksValid) continue
         val decoded = Gen3Decrypt.decode(bytes) ?: continue
-        out += HubMon(speciesId = decoded.speciesId, level = stats.level)
+        out += HubMon(
+            speciesId = decoded.speciesId,
+            nickname = decoded.nickname,
+            level = stats.level,
+            currentHp = stats.currentHp,
+            maxHp = stats.maxHp,
+            attack = stats.attack,
+            defense = stats.defense,
+            spAttack = stats.spAttack,
+            spDefense = stats.spDefense,
+            speed = stats.speed,
+            heldItemId = decoded.heldItemId,
+            abilityId = baseStats.abilityIdFor(decoded.speciesId, stats.personality, decoded.hiddenAbilityFlag),
+            moves = decoded.moves.toList(),
+            pp = decoded.pp.toList(),
+        )
     }
     return out
 }
@@ -100,10 +139,14 @@ fun HubScreen() {
     val context = LocalContext.current
     val client = remember { RetroArchClient() }
     val map = remember { MemoryMap.load(context) }
+    val names = remember { NameTables.load(context) }
+    val baseStats = remember { BaseStats.load(context) }
+    val moveData = remember { MoveData.load(context) }
 
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
+    var selectedSlot by remember { mutableStateOf<Int?>(null) }
     val phase = portalPhase()
 
     // Party memory reads need to be frequent to feel live; battery/clock barely
@@ -111,7 +154,7 @@ fun HubScreen() {
     // second, so they get their own slower ticker.
     LaunchedEffect(Unit) {
         while (true) {
-            party = readPartyMons(client, map.party)
+            party = readPartyMons(client, map.party, baseStats)
             delay(PARTY_POLL_INTERVAL_MS)
         }
     }
@@ -124,6 +167,7 @@ fun HubScreen() {
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -164,9 +208,21 @@ fun HubScreen() {
                     .padding(start = 8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                PartyColumn(mons = party.drop(3).take(3), phase = phase, modifier = Modifier.weight(1f))
+                PartyColumn(
+                    mons = party.drop(3).take(3),
+                    startIndex = 3,
+                    phase = phase,
+                    onSelect = { selectedSlot = it },
+                    modifier = Modifier.weight(1f),
+                )
                 Spacer(modifier = Modifier.width(6.dp))
-                PartyColumn(mons = party.take(3), phase = phase, modifier = Modifier.weight(1f))
+                PartyColumn(
+                    mons = party.take(3),
+                    startIndex = 0,
+                    phase = phase,
+                    onSelect = { selectedSlot = it },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
 
@@ -178,16 +234,34 @@ fun HubScreen() {
             HubButton("DEX", phase, modifier = Modifier.weight(1f))
         }
     }
+
+    val detailMon = selectedSlot?.let { party.getOrNull(it) }
+    if (detailMon != null) {
+        PokemonDetailScreen(
+            mon = detailMon,
+            names = names,
+            moveData = moveData,
+            phase = phase,
+            onClose = { selectedSlot = null },
+        )
+    }
+    }
 }
 
 @Composable
-private fun PartyColumn(mons: List<HubMon>, phase: Int, modifier: Modifier = Modifier) {
+private fun PartyColumn(
+    mons: List<HubMon>,
+    startIndex: Int,
+    phase: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     // Half height so each of the 3 slots matches the original 1x6 layout's per-slot
     // size (fullHeight / 6) instead of stretching to fill the whole column.
     Column(modifier = modifier.fillMaxHeight(0.5f), horizontalAlignment = Alignment.CenterHorizontally) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) }
+                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) { onSelect(startIndex + i) } }
             }
         }
     }
@@ -209,7 +283,7 @@ private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun MonCircle(mon: HubMon, phase: Int) {
+private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
@@ -219,6 +293,7 @@ private fun MonCircle(mon: HubMon, phase: Int) {
                 .size(50.dp)
                 .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
                 .clip(CircleShape)
+                .clickable(onClick = onClick)
                 .border(2.dp, GoldOutline, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -239,7 +314,7 @@ private fun MonCircle(mon: HubMon, phase: Int) {
 
 /** White pixel text with a dark stroke outline so it reads over the portal art. */
 @Composable
-private fun OutlinedPixelText(
+fun OutlinedPixelText(
     text: String,
     fontSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier,
