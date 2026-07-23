@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.BatteryManager
 import android.os.SystemClock
-import android.view.MotionEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,10 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -45,7 +42,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -74,15 +70,12 @@ import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import java.util.Calendar
 
 private const val PARTY_POLL_INTERVAL_MS = 10_000L
 private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
 private const val IDLE_DIM_DELAY_MS = 10_000L
 private const val IDLE_DIM_BRIGHTNESS = 0.08f
-private const val DEV_TOOLS_HOLD_MS = 3_000L
 
 private val HubBackground = Color(0xFF000000)
 private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
@@ -165,7 +158,6 @@ private fun clockText(): String {
 }
 
 @Composable
-@OptIn(ExperimentalComposeUiApi::class)
 fun HubScreen(onDevToolsRequested: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -187,8 +179,6 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     var isStarted by remember { mutableStateOf(false) }
     var dimmed by remember { mutableStateOf(false) }
     var lastActivityMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
-    val scope = rememberCoroutineScope()
-    var devToolsHoldJob by remember { mutableStateOf<Job?>(null) }
     val phase = portalPhase(
         enabled = isStarted && !dimmed && !showOpponentScreen && selectedSlot == null,
     )
@@ -259,23 +249,7 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            // Observe without consuming, so regular taps still reach party cards and buttons.
-            .pointerInteropFilter { event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        devToolsHoldJob?.cancel()
-                        devToolsHoldJob = scope.launch {
-                            delay(DEV_TOOLS_HOLD_MS)
-                            onDevToolsRequested()
-                        }
-                    }
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> devToolsHoldJob?.cancel()
-                }
-                false
-            },
+        modifier = Modifier.fillMaxSize(),
     ) {
     Column(
         modifier = Modifier
@@ -290,7 +264,17 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
         ) {
             PixelText(time, color = HubTextLight, fontSize = 9.sp)
             Spacer(modifier = Modifier.width(8.dp))
-            BatteryIcon(percent = battery)
+            Column(horizontalAlignment = Alignment.End) {
+                BatteryIcon(percent = battery)
+                Text(
+                    text = "⚙",
+                    color = GoldHighlight,
+                    fontSize = 17.sp,
+                    modifier = Modifier
+                        .padding(top = 1.dp)
+                        .clickable(onClick = onDevToolsRequested),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(2.dp))
