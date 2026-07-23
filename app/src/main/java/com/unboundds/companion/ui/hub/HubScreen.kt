@@ -1,7 +1,10 @@
 package com.unboundds.companion.ui.hub
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.BatteryManager
+import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,6 +30,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.memory.PartyLayout
 import com.unboundds.companion.network.RetroArchClient
@@ -54,10 +61,21 @@ import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.PokedexShell
 import com.unboundds.companion.ui.theme.RetroTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.util.Calendar
 
-private const val PARTY_POLL_INTERVAL_MS = 1000L
+/**
+ * The current public build deliberately favours battery life. Battle-aware polling
+ * can use a shorter interval later once the battle-state memory anchor is confirmed.
+ */
+private enum class PollingMode(val intervalMs: Long) {
+    LowPower(10_000L),
+}
+
+private val activePollingMode = PollingMode.LowPower
 private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
+private const val IDLE_DIM_DELAY_MS = 10_000L
+private const val IDLE_DIM_BRIGHTNESS = 0.08f
 
 data class HubMon(
     val speciesId: Int,
@@ -83,12 +101,19 @@ private suspend fun readPartyMons(
     layout: PartyLayout,
     baseStats: BaseStats,
 ): List<HubMon> {
+    // Party slots are contiguous: one 600-byte request replaces six UDP sockets,
+    // sends, receives, and closes per refresh.
+    val totalLength = layout.slotStride * layout.slotCount
+    val response = client.readCoreMemory(layout.firstSlotAddress, totalLength)
+    val partyBytes = (response as? RetroArchClient.Result.Success)
+        ?.let { parseReadCoreMemoryResponse(it.response) }
+        ?.takeIf { it.size >= totalLength }
+        ?: return emptyList()
+
     val out = mutableListOf<HubMon>()
     for (slot in 0 until layout.slotCount) {
-        val address = layout.firstSlotAddress + slot * layout.slotStride
-        val result = client.readCoreMemory(address, layout.slotStride)
-        val bytes = (result as? RetroArchClient.Result.Success)
-            ?.let { parseReadCoreMemoryResponse(it.response) } ?: continue
+        val offset = slot * layout.slotStride
+        val bytes = partyBytes.copyOfRange(offset, offset + layout.slotStride)
         val stats = PartyDecoder.decode(bytes) ?: continue
         if (!stats.looksValid) continue
         val decoded = Gen3Decrypt.decode(bytes) ?: continue
@@ -120,6 +145,12 @@ private fun batteryPercent(context: Context): Int {
     return manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
 }
 
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 private fun clockText(): String {
     val calendar = Calendar.getInstance()
     val hour = calendar.get(Calendar.HOUR).let { if (it == 0) 12 else it }
@@ -131,6 +162,8 @@ private fun clockText(): String {
 @Composable
 fun HubScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val activity = remember(context) { context.findActivity() }
     val client = remember { RetroArchClient() }
     val memoryMap = remember { MemoryMap.load(context) }
     val names = remember { NameTables.load(context) }
@@ -141,19 +174,57 @@ fun HubScreen() {
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
+    var isStarted by remember { mutableStateOf(false) }
+    var dimmed by remember { mutableStateOf(false) }
+    var lastActivityMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            party = readPartyMons(client, memoryMap.party, baseStats)
-            delay(PARTY_POLL_INTERVAL_MS)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, _ ->
+            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // An overlay only darkens pixels; this reduces the actual display/backlight
+    // brightness too, which is the meaningful saving on LCD handhelds.
+    DisposableEffect(dimmed, activity) {
+        if (dimmed && activity != null) {
+            val window = activity.window
+            val previousBrightness = window.attributes.screenBrightness
+            window.attributes = window.attributes.apply { screenBrightness = IDLE_DIM_BRIGHTNESS }
+            onDispose {
+                window.attributes = window.attributes.apply { screenBrightness = previousBrightness }
+            }
+        } else {
+            onDispose { }
         }
     }
-    LaunchedEffect(Unit) {
-        while (true) {
+
+    LaunchedEffect(isStarted) {
+        if (!isStarted) return@LaunchedEffect
+        while (isActive) {
+            val updatedParty = readPartyMons(client, memoryMap.party, baseStats)
+            if (updatedParty != party) {
+                party = updatedParty
+                dimmed = false
+                lastActivityMs = SystemClock.elapsedRealtime()
+            }
+            delay(activePollingMode.intervalMs)
+        }
+    }
+    LaunchedEffect(isStarted) {
+        if (!isStarted) return@LaunchedEffect
+        while (isActive) {
             battery = batteryPercent(context)
             time = clockText()
             delay(CLOCK_BATTERY_POLL_INTERVAL_MS)
         }
+    }
+    LaunchedEffect(lastActivityMs) {
+        val scheduledActivityMs = lastActivityMs
+        delay(IDLE_DIM_DELAY_MS)
+        if (lastActivityMs == scheduledActivityMs) dimmed = true
     }
 
     PokedexShell {
@@ -190,6 +261,18 @@ fun HubScreen() {
                     onClose = { selectedSlot = null },
                 )
             }
+        }
+
+        if (dimmed) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(RetroTheme.ink.copy(alpha = 0.72f))
+                    .clickable {
+                        dimmed = false
+                        lastActivityMs = SystemClock.elapsedRealtime()
+                    },
+            )
         }
     }
 }
