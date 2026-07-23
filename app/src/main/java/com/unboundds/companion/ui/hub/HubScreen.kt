@@ -171,6 +171,7 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     val regionMapAnchor = remember { map.anchors.firstOrNull { it.name == "regionMapSectionId" } }
 
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
+    var enemyParty by remember { mutableStateOf<List<HubMon>>(emptyList()) }
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
@@ -204,7 +205,7 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
         }
     }
 
-    LaunchedEffect(isStarted) {
+    LaunchedEffect(isStarted, showOpponentScreen) {
         if (!isStarted) return@LaunchedEffect
         while (isActive) {
             var changed = false
@@ -222,6 +223,18 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
                     val updatedMapName = mapNames.nameFor(bytes[0].toInt() and 0xFF)
                     if (updatedMapName != mapName) {
                         mapName = updatedMapName
+                        changed = true
+                    }
+                }
+            }
+            if (!showOpponentScreen) {
+                val updatedEnemyParty = readPartyMons(client, map.enemyParty, baseStats)
+                val oldSpecies = enemyParty.map { it.speciesId }
+                val newSpecies = updatedEnemyParty.map { it.speciesId }
+                if (newSpecies != oldSpecies) {
+                    enemyParty = updatedEnemyParty
+                    if (newSpecies.isNotEmpty()) {
+                        showOpponentScreen = true
                         changed = true
                     }
                 }
