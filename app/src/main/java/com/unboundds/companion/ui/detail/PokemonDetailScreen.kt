@@ -113,33 +113,31 @@ fun PokemonDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            DetailPanelBox {
-                Column {
-                    PixelText("STATS", color = DetailTextDim, fontSize = 9.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                DetailPanelBox(modifier = Modifier.weight(1f)) {
+                    Column {
+                        PixelText("STATS", color = DetailTextDim, fontSize = 9.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
                         StatColumn(
-                            listOf("ATK" to mon.attack, "DEF" to mon.defense, "SPD" to mon.speed),
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatColumn(
-                            listOf("SP.ATK" to mon.spAttack, "SP.DEF" to mon.spDefense),
-                            modifier = Modifier.weight(1f),
+                            listOf(
+                                "ATK" to mon.attack,
+                                "DEF" to mon.defense,
+                                "SPD" to mon.speed,
+                                "SP.ATK" to mon.spAttack,
+                                "SP.DEF" to mon.spDefense,
+                            ),
                         )
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            DetailPanelBox {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
+                DetailPanelBox(modifier = Modifier.weight(1f)) {
+                    Column {
                         PixelText("ITEM", color = DetailTextDim, fontSize = 9.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         PixelText(names.itemName(mon.heldItemId), color = DetailTextLight, fontSize = 9.sp)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
+                        Spacer(modifier = Modifier.height(12.dp))
                         PixelText("ABILITY", color = DetailTextDim, fontSize = 9.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         PixelText(names.abilityName(mon.abilityId), color = DetailTextLight, fontSize = 9.sp)
@@ -153,16 +151,27 @@ fun PokemonDetailScreen(
                 Column {
                     PixelText("MOVES", color = DetailTextDim, fontSize = 9.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    mon.moves.forEachIndexed { i, moveId ->
-                        if (moveId != 0) {
-                            MoveRow(
-                                name = names.moveName(moveId),
-                                type = moveData.type(moveId),
-                                pp = mon.pp.getOrElse(i) { 0 },
-                                ppMax = moveData.ppMax(moveId),
-                            )
-                            if (i != mon.moves.lastIndex) Spacer(modifier = Modifier.height(6.dp))
+                    val rows = mon.moves.mapIndexed { i, moveId -> moveId to mon.pp.getOrElse(i) { 0 } }.chunked(2)
+                    rows.forEachIndexed { rowIndex, rowSlots ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowSlots.forEach { (moveId, pp) ->
+                                if (moveId != 0) {
+                                    MoveCard(
+                                        name = names.moveName(moveId),
+                                        type = moveData.type(moveId),
+                                        pp = pp,
+                                        ppMax = moveData.ppMax(moveId),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
+                        if (rowIndex != rows.lastIndex) Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
@@ -184,19 +193,57 @@ private fun StatColumn(stats: List<Pair<String, Int>>, modifier: Modifier = Modi
     }
 }
 
+private val TypeColors = mapOf(
+    "Normal" to Color(0xFFA8A878),
+    "Fire" to Color(0xFFF08030),
+    "Water" to Color(0xFF6890F0),
+    "Electric" to Color(0xFFF8D030),
+    "Grass" to Color(0xFF78C850),
+    "Ice" to Color(0xFF98D8D8),
+    "Fighting" to Color(0xFFC03028),
+    "Poison" to Color(0xFFA040A0),
+    "Ground" to Color(0xFFE0C068),
+    "Flying" to Color(0xFFA890F0),
+    "Psychic" to Color(0xFFF85888),
+    "Bug" to Color(0xFFA8B820),
+    "Rock" to Color(0xFFB8A038),
+    "Ghost" to Color(0xFF705898),
+    "Dragon" to Color(0xFF7038F8),
+    "Dark" to Color(0xFF705848),
+    "Steel" to Color(0xFFB8B8D0),
+    "Fairy" to Color(0xFFEE99AC),
+)
+
+private fun typeColor(type: String): Color = TypeColors[type] ?: DetailTextDim
+
+/** One cell of the 2x2 move grid: name (tinted by type), type label, and PP. */
 @Composable
-private fun MoveRow(name: String, type: String, pp: Int, ppMax: Int) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        PixelText(name.uppercase(), color = DetailTextLight, fontSize = 9.sp, modifier = Modifier.weight(1f))
-        PixelText(type.uppercase(), color = DetailTextDim, fontSize = 8.sp, modifier = Modifier.padding(end = 10.dp))
-        PixelText("PP $pp/$ppMax", color = DetailTextDim, fontSize = 8.sp)
+private fun MoveCard(name: String, type: String, pp: Int, ppMax: Int, modifier: Modifier = Modifier) {
+    val color = typeColor(type)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(2.dp, color, RoundedCornerShape(4.dp))
+            .padding(8.dp),
+    ) {
+        Column {
+            PixelText(name.uppercase(), color = color, fontSize = 9.sp)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                PixelText(type.uppercase(), color = DetailTextDim, fontSize = 7.sp)
+                PixelText("PP $pp/$ppMax", color = DetailTextDim, fontSize = 7.sp)
+            }
+        }
     }
 }
 
 @Composable
-private fun DetailPanelBox(content: @Composable () -> Unit) {
+private fun DetailPanelBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
             .background(DetailPanel, RoundedCornerShape(6.dp))
