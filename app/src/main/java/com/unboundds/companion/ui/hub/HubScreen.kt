@@ -1,17 +1,18 @@
 package com.unboundds.companion.ui.hub
 
 import android.content.Context
+import com.unboundds.companion.R
 import android.os.BatteryManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +39,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,11 +56,8 @@ import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
 import com.unboundds.companion.ui.detail.PokemonDetailScreen
-import com.unboundds.companion.ui.theme.GoldHighlight
-import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
-import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -65,9 +65,10 @@ import java.util.Calendar
 private const val PARTY_POLL_INTERVAL_MS = 1000L
 private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
 
-private val HubBackground = Color(0xFF000000)
-private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
-private val HubTextLight = Color(0xFFF0EEDA)
+// Light, classic-Pokemon-game palette: warm parchment background, navy ink text,
+// replacing the old OLED-black Unbound theme.
+private val HubBackground = Color(0xFFFBF6E9)
+private val HubTextDark = Color(0xFF223057)
 
 data class HubMon(
     val speciesId: Int,
@@ -147,6 +148,8 @@ fun HubScreen() {
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
+    // Still used by PokemonDetailScreen's own portal-swirl backdrop, which is unrelated
+    // to this screen's redesign.
     val phase = portalPhase()
 
     // Party memory reads need to be frequent to feel live; battery/clock barely
@@ -168,141 +171,143 @@ fun HubScreen() {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HubBackground)
-            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 3.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(HubBackground)
+                .padding(16.dp),
         ) {
-            PixelText(time, color = HubTextLight, fontSize = 9.sp)
-            Spacer(modifier = Modifier.width(8.dp))
-            BatteryIcon(percent = battery)
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Row(modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .weight(0.62f)
-                    .fillMaxHeight()
-                    .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                    .background(HubPanel, RoundedCornerShape(6.dp))
-                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
-            }
-
-            // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
-            // Bottom-aligned so the grid sits down near the OPPONENT/DEX buttons.
             Row(
-                modifier = Modifier
-                    .weight(0.38f)
-                    .fillMaxHeight()
-                    .padding(start = 8.dp),
-                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                PartyColumn(
-                    mons = party.drop(3).take(3),
-                    startIndex = 3,
-                    phase = phase,
-                    onSelect = { selectedSlot = it },
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                PartyColumn(
-                    mons = party.take(3),
-                    startIndex = 0,
-                    phase = phase,
-                    onSelect = { selectedSlot = it },
-                    modifier = Modifier.weight(1f),
-                )
+                PixelText("UNBOUND", color = HubTextDark, fontSize = 12.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PixelText(time, color = HubTextDark, fontSize = 9.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    BatteryIcon(percent = battery)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.52f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.map_panel),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                    PixelText("MAP", color = HubTextDark, fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(0.48f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    listOf(0 to 3, 1 to 4, 2 to 5).forEach { (leftIndex, rightIndex) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        ) {
+                            listOf(leftIndex, rightIndex).forEach { idx ->
+                                val mon = party.getOrNull(idx)
+                                if (mon != null) {
+                                    MonCircle(mon) { selectedSlot = idx }
+                                } else {
+                                    Spacer(modifier = Modifier.size(64.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                HubButton("OPPONENT", modifier = Modifier.weight(1f))
+                HubButton("DEX", modifier = Modifier.weight(1f))
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
-            HubButton("OPPONENT", phase, modifier = Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(10.dp))
-            HubButton("DEX", phase, modifier = Modifier.weight(1f))
+        val detailMon = selectedSlot?.let { party.getOrNull(it) }
+        if (detailMon != null) {
+            PokemonDetailScreen(
+                mon = detailMon,
+                names = names,
+                moveData = moveData,
+                phase = phase,
+                onClose = { selectedSlot = null },
+            )
         }
-    }
-
-    val detailMon = selectedSlot?.let { party.getOrNull(it) }
-    if (detailMon != null) {
-        PokemonDetailScreen(
-            mon = detailMon,
-            names = names,
-            moveData = moveData,
-            phase = phase,
-            onClose = { selectedSlot = null },
-        )
-    }
     }
 }
 
 @Composable
-private fun PartyColumn(
-    mons: List<HubMon>,
-    startIndex: Int,
-    phase: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // Half height so each of the 3 slots matches the original 1x6 layout's per-slot
-    // size (fullHeight / 6) instead of stretching to fill the whole column.
-    Column(modifier = modifier.fillMaxHeight(0.5f), horizontalAlignment = Alignment.CenterHorizontally) {
-        repeat(3) { i ->
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) { onSelect(startIndex + i) } }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) {
+private fun HubButton(label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .fillMaxHeight()
-            .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-            .clip(RoundedCornerShape(8.dp))
-            .border(2.dp, GoldOutline, RoundedCornerShape(8.dp)),
+            .aspectRatio(2.75f)
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
-        OutlinedPixelText(label, fontSize = 11.sp)
+        Image(
+            painter = painterResource(R.drawable.button_pill),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.matchParentSize(),
+        )
+        Text(
+            text = label,
+            style = TextStyle(
+                fontFamily = RetroTheme.pixelFont,
+                fontSize = 12.sp,
+                color = HubTextDark,
+            ),
+        )
     }
 }
 
 @Composable
-private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
+private fun MonCircle(mon: HubMon, onClick: () -> Unit) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .size(50.dp)
-                .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
+                .size(64.dp)
+                .shadow(elevation = 3.dp, shape = CircleShape)
                 .clip(CircleShape)
-                .clickable(onClick = onClick)
-                .border(2.dp, GoldOutline, CircleShape),
+                .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
             if (sprite != null) {
-                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
+                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(48.dp))
             } else {
-                PixelText("?", color = HubTextLight, fontSize = 14.sp)
+                PixelText("?", color = HubTextDark, fontSize = 14.sp)
             }
+            Image(
+                painter = painterResource(R.drawable.party_slot_frame),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+            )
         }
         OutlinedPixelText(
             text = "L${mon.level}",
@@ -312,7 +317,7 @@ private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
     }
 }
 
-/** White pixel text with a dark stroke outline so it reads over the portal art. */
+/** White pixel text with a dark stroke outline so it reads over busy art underneath. */
 @Composable
 fun OutlinedPixelText(
     text: String,
@@ -340,25 +345,25 @@ fun OutlinedPixelText(
     }
 }
 
-/** Battery glyph, light-on-black: gold outline + cap, fill bar by charge. */
+/** Battery glyph, dark-on-light: navy outline + cap, fill bar by charge. */
 @Composable
 private fun BatteryIcon(percent: Int) {
     val fillColor = when {
-        percent > 50 -> Color(0xFF58C858)
-        percent > 20 -> Color(0xFFE8B820)
-        else -> Color(0xFFD84040)
+        percent > 50 -> Color(0xFF3C9A46)
+        percent > 20 -> Color(0xFFD1A020)
+        else -> Color(0xFFC0392B)
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Canvas(modifier = Modifier.size(width = 26.dp, height = 13.dp)) {
             val bodyWidth = size.width * 0.88f
             drawRoundRect(
-                color = GoldOutline,
+                color = HubTextDark,
                 size = Size(bodyWidth, size.height),
                 cornerRadius = CornerRadius(3f, 3f),
                 style = Stroke(width = 3f),
             )
             drawRoundRect(
-                color = GoldOutline,
+                color = HubTextDark,
                 topLeft = Offset(bodyWidth + 2f, size.height * 0.28f),
                 size = Size(size.width - bodyWidth - 2f, size.height * 0.44f),
                 cornerRadius = CornerRadius(2f, 2f),
@@ -374,6 +379,6 @@ private fun BatteryIcon(percent: Int) {
             )
         }
         Spacer(modifier = Modifier.width(4.dp))
-        PixelText("$percent%", color = HubTextLight, fontSize = 8.sp)
+        PixelText("$percent%", color = HubTextDark, fontSize = 8.sp)
     }
 }
