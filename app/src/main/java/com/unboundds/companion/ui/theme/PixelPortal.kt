@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.ceil
@@ -33,8 +34,10 @@ import kotlin.math.sqrt
  * read as overpowering.
  */
 
-private const val PORTAL_STEPS = 30
-private const val PORTAL_CYCLE_MS = 1400
+// A slow palette shift retains the portal effect without continuously redrawing
+// the companion screen at game-like frame rates.
+private const val PORTAL_STEPS = 8
+private const val PORTAL_CYCLE_MS = 8000
 
 private val PortalLight = Color(0xFF7A30C0)
 private val PortalDark = Color(0xFF561F96)
@@ -58,11 +61,12 @@ val GoldHighlight = Color(0xFFF0D888)
  * exactly PORTAL_STEPS times per PORTAL_CYCLE_MS.
  */
 @Composable
-fun portalPhase(): Int {
+fun portalPhase(enabled: Boolean = true): Int {
     var phase by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(enabled) {
+        if (!enabled) return@LaunchedEffect
         val stepDelayMs = (PORTAL_CYCLE_MS / PORTAL_STEPS).toLong()
-        while (true) {
+        while (isActive) {
             delay(stepDelayMs)
             phase = (phase + 1) % PORTAL_STEPS
         }
