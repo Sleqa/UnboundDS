@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,17 +19,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.unboundds.companion.memory.DiffScanner
+import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.memory.MemoryRegion
 import com.unboundds.companion.memory.MemoryRegions
 import com.unboundds.companion.network.RetroArchClient
 import com.unboundds.companion.network.parseReadCoreMemoryResponse
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val SAVE_BLOCK1_PTR_ADDRESS = 0x03005008
 private const val SAVE_BLOCK1_SCAN_LENGTH = 0x2000 // 8KB — generous margin over vanilla FireRed's ~3.9KB struct
+private const val NOISE_CALIBRATION_SAMPLES = 5
 
 /**
  * Snapshot a memory region, perform one controlled in-game action, then
@@ -40,6 +45,8 @@ private const val SAVE_BLOCK1_SCAN_LENGTH = 0x2000 // 8KB — generous margin ov
 fun DiffScannerScreen() {
     val client = remember { RetroArchClient() }
     val scanner = remember { DiffScanner(client) }
+    val context = LocalContext.current
+    val memoryMap = remember { MemoryMap.load(context) }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
 
@@ -48,6 +55,24 @@ fun DiffScannerScreen() {
     var baseline by remember { mutableStateOf<ByteArray?>(null) }
     var noiseOffsets by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var diffs by remember { mutableStateOf<List<DiffScanner.Diff>>(emptyList()) }
+    var hideKnown by remember { mutableStateOf(false) }
+
+    fun knownOffsets(region: MemoryRegion): Set<Int> {
+        if (!hideKnown) return emptySet()
+        val ranges = buildList {
+            add(memoryMap.party.firstSlotAddress to memoryMap.party.slotStride * memoryMap.party.slotCount)
+            add(memoryMap.enemyParty.firstSlotAddress to memoryMap.enemyParty.slotStride * memoryMap.enemyParty.slotCount)
+            add(memoryMap.overworldObjects.firstSlotAddress to memoryMap.overworldObjects.slotStride * memoryMap.overworldObjects.slotCount)
+            add(memoryMap.scriptVars.firstSlotAddress to memoryMap.scriptVars.slotStride * memoryMap.scriptVars.slotCount)
+            memoryMap.anchors.forEach { add(it.address to it.size) }
+        }
+        return ranges.flatMapTo(mutableSetOf()) { (start, length) ->
+            val end = start + length
+            val overlapStart = maxOf(start, region.startAddress)
+            val overlapEnd = minOf(end, region.startAddress + region.length)
+            if (overlapStart < overlapEnd) (overlapStart until overlapEnd).map { it - region.startAddress } else emptyList()
+        }
+    }
 
     fun resetRegion(region: MemoryRegion) {
         selectedRegion = region
@@ -105,7 +130,11 @@ fun DiffScannerScreen() {
                                         ((bytes[1].toInt() and 0xFF) shl 8) or
                                         ((bytes[2].toInt() and 0xFF) shl 16) or
                                         ((bytes[3].toInt() and 0xFF) shl 24)
-                                    resetRegion(MemoryRegion("SaveBlock1", ptr, SAVE_BLOCK1_SCAN_LENGTH))
+                                    if (ptr !in 0x02000000..0x0203FFFF || ptr and 3 != 0) {
+                                        status = "Pointer was 0x${ptr.toUInt().toString(16)} — not a valid EWRAM SaveBlock1 pointer. Try the direct candidate region."
+                                    } else {
+                                        resetRegion(MemoryRegion("SaveBlock1", ptr, SAVE_BLOCK1_SCAN_LENGTH))
+                                    }
                                 }
                             }
                             is RetroArchClient.Result.Failure -> status = "Error: ${r.message}"
@@ -113,7 +142,7 @@ fun DiffScannerScreen() {
                     }
                 },
             ) {
-                Text("Use SaveBlock1")
+            Text("Use SaveBlock1 pointer")
             }
         }
 
@@ -130,16 +159,33 @@ fun DiffScannerScreen() {
             }
         }
 
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Checkbox(checked = hideKnown, onCheckedChange = { hideKnown = it })
+            Text("Hide known anchors/party/OW ranges", style = MaterialTheme.typography.bodySmall)
+        }
+        Text(
+            "This is opt-in: it removes addresses already mapped by the app, but leaves unknown bytes visible. " +
+                "For SaveBlock1, test a change that is actually persisted (e.g. money, flags, or a save) rather than movement.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
         Row(modifier = Modifier.padding(top = 12.dp)) {
             Button(
                 onClick = {
                     scope.launch {
                         status = "Calibrating noise on ${selectedRegion.name}…"
-                        val first = scanner.readRegion(selectedRegion)
-                        val second = scanner.readRegion(selectedRegion)
-                        if (first is DiffScanner.ScanResult.Success && second is DiffScanner.ScanResult.Success) {
-                            noiseOffsets = scanner.changedOffsets(first.bytes, second.bytes)
-                            status = "Noise calibrated: ${noiseOffsets.size} byte(s) change with no action — " +
+                        val samples = mutableListOf<ByteArray>()
+                        repeat(NOISE_CALIBRATION_SAMPLES) {
+                            when (val sample = scanner.readRegion(selectedRegion)) {
+                                is DiffScanner.ScanResult.Success -> samples += sample.bytes
+                                is DiffScanner.ScanResult.Failure -> return@launch
+                            }
+                            delay(150)
+                        }
+                        if (samples.size >= 2) {
+                            noiseOffsets = samples.zipWithNext()
+                                .flatMapTo(mutableSetOf()) { (first, second) -> scanner.changedOffsets(first, second) }
+                            status = "Noise calibrated across ${samples.size} samples: ${noiseOffsets.size} byte(s) change with no action — " +
                                 "these will be filtered from future comparisons."
                         } else {
                             status = "Calibration failed — check connection"
@@ -186,10 +232,10 @@ fun DiffScannerScreen() {
                                     base,
                                     result.bytes,
                                     selectedRegion.startAddress,
-                                    noiseOffsets,
+                                    noiseOffsets + knownOffsets(selectedRegion),
                                 )
                                 status = "${diffs.size} changed byte-range(s) found" +
-                                    if (noiseOffsets.isNotEmpty()) " (noise filtered)" else ""
+                                    if (noiseOffsets.isNotEmpty() || hideKnown) " (filters applied)" else ""
                             }
                             is DiffScanner.ScanResult.Failure -> status = "Error: ${result.message}"
                         }

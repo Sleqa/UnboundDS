@@ -11,7 +11,10 @@ object MemoryRegions {
     val IWRAM = MemoryRegion("IWRAM", 0x03000000, 0x8000)
     // CFRU-derived candidate window. Use the DexNav probe to validate it first.
     val DexNavCandidate = MemoryRegion("DexNav candidate", 0x0203E038, 0x60)
-    val all = listOf(EWRAM, IWRAM, DexNavCandidate)
+    // CFRU/FireRed SaveBlock1 storage candidate. The pointer is still preferred;
+    // this gives the scanner a useful fallback when Unbound's pointer differs.
+    val SaveBlock1Candidate = MemoryRegion("SaveBlock1 candidate", 0x0202552C, 0x2000)
+    val all = listOf(EWRAM, IWRAM, DexNavCandidate, SaveBlock1Candidate)
 }
 
 /**
