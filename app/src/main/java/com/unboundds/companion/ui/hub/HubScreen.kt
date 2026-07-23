@@ -52,7 +52,7 @@ import com.unboundds.companion.pokemon.MoveData
 import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
-import com.unboundds.companion.ui.anchors.AnchorScreen
+import com.unboundds.companion.memory.MapNames
 import com.unboundds.companion.ui.detail.PokemonDetailScreen
 import com.unboundds.companion.ui.opponent.OpponentScreen
 import com.unboundds.companion.ui.theme.GoldHighlight
@@ -144,13 +144,15 @@ fun HubScreen() {
     val names = remember { NameTables.load(context) }
     val baseStats = remember { BaseStats.load(context) }
     val moveData = remember { MoveData.load(context) }
+    val mapNames = remember { MapNames.load(context) }
+    val regionMapAnchor = remember { map.anchors.firstOrNull { it.name == "regionMapSectionId" } }
 
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
     var showOpponentScreen by remember { mutableStateOf(false) }
-    var showAnchorScreen by remember { mutableStateOf(false) }
+    var mapName by remember { mutableStateOf("MAP") }
     val phase = portalPhase()
 
     // Party memory reads need to be frequent to feel live; battery/clock barely
@@ -159,6 +161,15 @@ fun HubScreen() {
     LaunchedEffect(Unit) {
         while (true) {
             party = readPartyMons(client, map.party, baseStats)
+            val anchor = regionMapAnchor
+            if (anchor != null) {
+                val result = client.readCoreMemory(anchor.address, anchor.size)
+                val bytes = (result as? RetroArchClient.Result.Success)
+                    ?.let { parseReadCoreMemoryResponse(it.response) }
+                if (bytes != null && bytes.isNotEmpty()) {
+                    mapName = mapNames.nameFor(bytes[0].toInt() and 0xFF)
+                }
+            }
             delay(PARTY_POLL_INTERVAL_MS)
         }
     }
@@ -196,13 +207,11 @@ fun HubScreen() {
                     .weight(0.62f)
                     .fillMaxHeight()
                     .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                    .clip(RoundedCornerShape(6.dp))
                     .background(HubPanel, RoundedCornerShape(6.dp))
-                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp))
-                    .clickable { showAnchorScreen = true },
+                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
+                PixelText(mapName.uppercase(), color = Color(0xFFB0B8A8), fontSize = 16.sp)
             }
 
             // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
@@ -255,25 +264,6 @@ fun HubScreen() {
 
     if (showOpponentScreen) {
         OpponentScreen(onClose = { showOpponentScreen = false })
-    }
-
-    if (showAnchorScreen) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Text(
-                        text = "Close",
-                        modifier = Modifier
-                            .clickable { showAnchorScreen = false }
-                            .padding(8.dp),
-                    )
-                }
-                AnchorScreen()
-            }
-        }
     }
     }
 }
