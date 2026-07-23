@@ -1,11 +1,11 @@
 package com.unboundds.companion.ui.hub
 
 import android.content.Context
-import com.unboundds.companion.R
 import android.os.BatteryManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,8 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,6 +57,7 @@ import com.unboundds.companion.ui.theme.GoldHighlight
 import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
+import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -192,15 +191,12 @@ fun HubScreen() {
                 modifier = Modifier
                     .weight(0.62f)
                     .fillMaxHeight()
-                    .background(HubPanel, RoundedCornerShape(6.dp)),
+                    .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
+                    .background(HubPanel, RoundedCornerShape(6.dp))
+                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.map_panel_frame),
-                    contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.matchParentSize(),
-                )
+                PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
             }
 
             // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
@@ -215,6 +211,7 @@ fun HubScreen() {
                 PartyColumn(
                     mons = party.drop(3).take(3),
                     startIndex = 3,
+                    phase = phase,
                     onSelect = { selectedSlot = it },
                     modifier = Modifier.weight(1f),
                 )
@@ -222,6 +219,7 @@ fun HubScreen() {
                 PartyColumn(
                     mons = party.take(3),
                     startIndex = 0,
+                    phase = phase,
                     onSelect = { selectedSlot = it },
                     modifier = Modifier.weight(1f),
                 )
@@ -231,9 +229,9 @@ fun HubScreen() {
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
-            HubButton("OPPONENT", modifier = Modifier.weight(1f))
+            HubButton("OPPONENT", phase, modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            HubButton("DEX", modifier = Modifier.weight(1f))
+            HubButton("DEX", phase, modifier = Modifier.weight(1f))
         }
     }
 
@@ -254,6 +252,7 @@ fun HubScreen() {
 private fun PartyColumn(
     mons: List<HubMon>,
     startIndex: Int,
+    phase: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -262,32 +261,29 @@ private fun PartyColumn(
     Column(modifier = modifier.fillMaxHeight(0.5f), horizontalAlignment = Alignment.CenterHorizontally) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                mons.getOrNull(i)?.let { mon -> MonCircle(mon) { onSelect(startIndex + i) } }
+                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) { onSelect(startIndex + i) } }
             }
         }
     }
 }
 
 @Composable
-private fun HubButton(label: String, modifier: Modifier = Modifier) {
+private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(8.dp)),
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
+            .clip(RoundedCornerShape(8.dp))
+            .border(2.dp, GoldOutline, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(R.drawable.button_bg),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.matchParentSize(),
-        )
+        PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
         OutlinedPixelText(label, fontSize = 11.sp)
     }
 }
 
 @Composable
-private fun MonCircle(mon: HubMon, onClick: () -> Unit) {
+private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
@@ -297,14 +293,11 @@ private fun MonCircle(mon: HubMon, onClick: () -> Unit) {
                 .size(50.dp)
                 .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
                 .clip(CircleShape)
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .border(2.dp, GoldOutline, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painter = painterResource(R.drawable.party_slot_bg),
-                contentDescription = null,
-                modifier = Modifier.matchParentSize(),
-            )
+            PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
             if (sprite != null) {
                 Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
             } else {
