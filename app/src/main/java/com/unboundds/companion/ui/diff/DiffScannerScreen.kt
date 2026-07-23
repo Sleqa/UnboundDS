@@ -74,6 +74,13 @@ fun DiffScannerScreen() {
                 "calibrate noise first, or scope down to SaveBlock1.",
             style = MaterialTheme.typography.bodySmall,
         )
+        Text(
+            "DexNav workflow: choose the small candidate window, take a snapshot, then change only one " +
+                "thing: selected target, scan start, proximity, or battle. Its addresses are CFRU-derived " +
+                "and require a live match before being trusted for Unbound.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 6.dp),
+        )
 
         Row(modifier = Modifier.padding(top = 12.dp)) {
             MemoryRegions.all.forEach { region ->

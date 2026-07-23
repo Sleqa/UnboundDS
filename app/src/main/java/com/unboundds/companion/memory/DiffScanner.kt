@@ -9,7 +9,9 @@ data class MemoryRegion(val name: String, val startAddress: Int, val length: Int
 object MemoryRegions {
     val EWRAM = MemoryRegion("EWRAM", 0x02000000, 0x40000)
     val IWRAM = MemoryRegion("IWRAM", 0x03000000, 0x8000)
-    val all = listOf(EWRAM, IWRAM)
+    // CFRU-derived candidate window. Use the DexNav probe to validate it first.
+    val DexNavCandidate = MemoryRegion("DexNav candidate", 0x0203E038, 0x60)
+    val all = listOf(EWRAM, IWRAM, DexNavCandidate)
 }
 
 /**
