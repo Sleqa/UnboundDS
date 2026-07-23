@@ -241,6 +241,7 @@ fun HubScreen() {
             mon = detailMon,
             names = names,
             moveData = moveData,
+            baseStats = baseStats,
             phase = phase,
             onClose = { selectedSlot = null },
         )
