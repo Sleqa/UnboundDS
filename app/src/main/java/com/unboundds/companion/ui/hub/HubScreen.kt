@@ -6,7 +6,6 @@ import android.os.BatteryManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -194,11 +194,16 @@ fun HubScreen() {
                     .weight(0.62f)
                     .fillMaxHeight()
                     .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                    .background(HubPanel, RoundedCornerShape(6.dp))
-                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
+                    .background(HubPanel, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
+                Image(
+                    painter = painterResource(R.drawable.map_panel_frame),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.matchParentSize(),
+                )
             }
 
             // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
@@ -275,11 +280,16 @@ private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) 
         modifier = modifier
             .fillMaxHeight()
             .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-            .clip(RoundedCornerShape(8.dp))
-            .border(2.dp, GoldOutline, RoundedCornerShape(8.dp)),
+            .clip(RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
         PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
+        Image(
+            painter = painterResource(R.drawable.button_frame),
+            contentDescription = null,
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.matchParentSize(),
+        )
         OutlinedPixelText(label, fontSize = 11.sp)
     }
 }
