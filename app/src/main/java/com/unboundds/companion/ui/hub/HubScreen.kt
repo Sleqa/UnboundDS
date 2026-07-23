@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.waitForUpOrCancellation
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -70,12 +74,14 @@ import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Calendar
 
 private const val PARTY_POLL_INTERVAL_MS = 10_000L
 private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
 private const val IDLE_DIM_DELAY_MS = 10_000L
 private const val IDLE_DIM_BRIGHTNESS = 0.08f
+private const val DEV_TOOLS_HOLD_MS = 3_000L
 
 private val HubBackground = Color(0xFF000000)
 private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
@@ -158,7 +164,7 @@ private fun clockText(): String {
 }
 
 @Composable
-fun HubScreen() {
+fun HubScreen(onDevToolsRequested: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val activity = remember(context) { context.findActivity() }
@@ -248,7 +254,20 @@ fun HubScreen() {
         if (lastActivityMs == scheduledActivityMs) dimmed = true
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(onDevToolsRequested) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    val releasedBeforeTimeout = withTimeoutOrNull(DEV_TOOLS_HOLD_MS) {
+                        waitForUpOrCancellation()
+                        true
+                    } ?: false
+                    if (!releasedBeforeTimeout) onDevToolsRequested()
+                }
+            },
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()

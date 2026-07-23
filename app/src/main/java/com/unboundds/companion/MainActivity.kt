@@ -1,7 +1,6 @@
 package com.unboundds.companion
 
 import android.os.Bundle
-import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -32,10 +31,8 @@ private enum class DevScreen { Inspector, DiffScanner, Anchors }
 
 class MainActivity : ComponentActivity() {
 
-    // Toggled by the R3+L3 controller combo to reveal the developer tools.
+    // Toggled by a deliberate three-second touch-and-hold on the companion screen.
     private val showDevTools: MutableState<Boolean> = mutableStateOf(false)
-    private var l3Down = false
-    private var r3Down = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,30 +42,13 @@ class MainActivity : ComponentActivity() {
                     if (showDevTools.value) {
                         DevTools(onClose = { showDevTools.value = false })
                     } else {
-                        HubScreen()
+                        HubScreen(onDevToolsRequested = { showDevTools.value = true })
                     }
                 }
             }
         }
     }
 
-    // R3 = right stick click (THUMBR), L3 = left stick click (THUMBL). Both held
-    // together toggles the hidden developer tools. Requires the app to have input
-    // focus -- if the emulator has grabbed the controller this may not fire; the
-    // on-screen CLOSE button is the fallback.
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        when (event.keyCode) {
-            KeyEvent.KEYCODE_BUTTON_THUMBL -> l3Down = event.action == KeyEvent.ACTION_DOWN
-            KeyEvent.KEYCODE_BUTTON_THUMBR -> r3Down = event.action == KeyEvent.ACTION_DOWN
-        }
-        if (l3Down && r3Down && event.action == KeyEvent.ACTION_DOWN) {
-            showDevTools.value = !showDevTools.value
-            l3Down = false
-            r3Down = false
-            return true
-        }
-        return super.dispatchKeyEvent(event)
-    }
 }
 
 @androidx.compose.runtime.Composable
@@ -82,7 +62,7 @@ private fun DevTools(onClose: () -> Unit) {
             Button(onClick = onClose, modifier = Modifier.padding(start = 4.dp)) { Text("Close") }
         }
         PixelText(
-            "DEV TOOLS - R3+L3 TO HIDE",
+            "DEV TOOLS - HOLD SCREEN 3S TO OPEN",
             color = RetroTheme.text,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
