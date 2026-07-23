@@ -195,7 +195,6 @@ fun HubScreen() {
                     .background(HubPanel, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
                 Image(
                     painter = painterResource(R.drawable.map_panel_frame),
                     contentDescription = null,
