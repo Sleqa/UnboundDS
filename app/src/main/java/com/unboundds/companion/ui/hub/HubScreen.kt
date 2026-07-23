@@ -192,7 +192,6 @@ fun HubScreen() {
                 modifier = Modifier
                     .weight(0.62f)
                     .fillMaxHeight()
-                    .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
                     .background(HubPanel, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -275,7 +274,6 @@ private fun HubButton(label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
             .clip(RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
