@@ -59,7 +59,6 @@ import com.unboundds.companion.ui.theme.GoldHighlight
 import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
 import com.unboundds.companion.ui.theme.RetroTheme
-import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -218,7 +217,6 @@ fun HubScreen() {
                 PartyColumn(
                     mons = party.drop(3).take(3),
                     startIndex = 3,
-                    phase = phase,
                     onSelect = { selectedSlot = it },
                     modifier = Modifier.weight(1f),
                 )
@@ -226,7 +224,6 @@ fun HubScreen() {
                 PartyColumn(
                     mons = party.take(3),
                     startIndex = 0,
-                    phase = phase,
                     onSelect = { selectedSlot = it },
                     modifier = Modifier.weight(1f),
                 )
@@ -236,9 +233,9 @@ fun HubScreen() {
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
-            HubButton("OPPONENT", phase, modifier = Modifier.weight(1f))
+            HubButton("OPPONENT", modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            HubButton("DEX", phase, modifier = Modifier.weight(1f))
+            HubButton("DEX", modifier = Modifier.weight(1f))
         }
     }
 
@@ -259,7 +256,6 @@ fun HubScreen() {
 private fun PartyColumn(
     mons: List<HubMon>,
     startIndex: Int,
-    phase: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -268,14 +264,14 @@ private fun PartyColumn(
     Column(modifier = modifier.fillMaxHeight(0.5f), horizontalAlignment = Alignment.CenterHorizontally) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) { onSelect(startIndex + i) } }
+                mons.getOrNull(i)?.let { mon -> MonCircle(mon) { onSelect(startIndex + i) } }
             }
         }
     }
 }
 
 @Composable
-private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) {
+private fun HubButton(label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -283,9 +279,8 @@ private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) 
             .clip(RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
         Image(
-            painter = painterResource(R.drawable.button_frame),
+            painter = painterResource(R.drawable.button_bg),
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier.matchParentSize(),
@@ -295,7 +290,7 @@ private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
+private fun MonCircle(mon: HubMon, onClick: () -> Unit) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 
@@ -308,17 +303,16 @@ private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
+            Image(
+                painter = painterResource(R.drawable.party_slot_bg),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+            )
             if (sprite != null) {
                 Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
             } else {
                 PixelText("?", color = HubTextLight, fontSize = 14.sp)
             }
-            Image(
-                painter = painterResource(R.drawable.party_slot_frame),
-                contentDescription = null,
-                modifier = Modifier.matchParentSize(),
-            )
         }
         OutlinedPixelText(
             text = "L${mon.level}",
