@@ -53,6 +53,7 @@ import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
 import com.unboundds.companion.ui.detail.PokemonDetailScreen
+import com.unboundds.companion.ui.opponent.OpponentScreen
 import com.unboundds.companion.ui.theme.GoldHighlight
 import com.unboundds.companion.ui.theme.GoldOutline
 import com.unboundds.companion.ui.theme.PixelText
@@ -86,7 +87,7 @@ data class HubMon(
     val pp: List<Int>,
 )
 
-private suspend fun readPartyMons(
+internal suspend fun readPartyMons(
     client: RetroArchClient,
     layout: PartyLayout,
     baseStats: BaseStats,
@@ -147,6 +148,7 @@ fun HubScreen() {
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
+    var showOpponentScreen by remember { mutableStateOf(false) }
     val phase = portalPhase()
 
     // Party memory reads need to be frequent to feel live; battery/clock barely
@@ -229,7 +231,7 @@ fun HubScreen() {
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth().height(44.dp)) {
-            HubButton("OPPONENT", phase, modifier = Modifier.weight(1f))
+            HubButton("OPPONENT", phase, onClick = { showOpponentScreen = true }, modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
             HubButton("DEX", phase, modifier = Modifier.weight(1f))
         }
@@ -245,6 +247,10 @@ fun HubScreen() {
             phase = phase,
             onClose = { selectedSlot = null },
         )
+    }
+
+    if (showOpponentScreen) {
+        OpponentScreen(onClose = { showOpponentScreen = false })
     }
     }
 }
@@ -269,13 +275,14 @@ private fun PartyColumn(
 }
 
 @Composable
-private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) {
+private fun HubButton(label: String, phase: Int, onClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
             .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
             .clip(RoundedCornerShape(8.dp))
-            .border(2.dp, GoldOutline, RoundedCornerShape(8.dp)),
+            .border(2.dp, GoldOutline, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
@@ -284,7 +291,7 @@ private fun HubButton(label: String, phase: Int, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
+internal fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
 

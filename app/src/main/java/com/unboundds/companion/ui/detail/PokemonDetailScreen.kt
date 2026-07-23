@@ -79,7 +79,13 @@ fun PokemonDetailScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                PixelText(displayName.uppercase(), color = DetailTextLight, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PixelText(displayName.uppercase(), color = DetailTextLight, fontSize = 14.sp)
+                    types.forEach { type ->
+                        Spacer(modifier = Modifier.width(6.dp))
+                        TypeBadge(type)
+                    }
+                }
                 CloseButton(onClose)
             }
 
@@ -105,21 +111,13 @@ fun PokemonDetailScreen(
                 Spacer(modifier = Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        PixelText(speciesName.uppercase(), color = DetailTextDim, fontSize = 10.sp)
-                        types.forEach { type ->
-                            Spacer(modifier = Modifier.width(4.dp))
-                            TypeBadge(type)
-                        }
-                    }
+                    PixelText("Lv ${mon.level}", color = DetailTextLight, fontSize = 10.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     PixelText(
                         "Item: ${names.itemName(mon.heldItemId)}   Ability: ${names.abilityName(mon.abilityId)}",
                         color = DetailTextDim,
                         fontSize = 8.sp,
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    PixelText("Lv ${mon.level}", color = DetailTextLight, fontSize = 10.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     PixelHpBar(
                         fraction = if (mon.maxHp > 0) mon.currentHp.toFloat() / mon.maxHp else 0f,
