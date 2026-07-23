@@ -52,6 +52,7 @@ import com.unboundds.companion.pokemon.MoveData
 import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
+import com.unboundds.companion.ui.anchors.AnchorScreen
 import com.unboundds.companion.ui.detail.PokemonDetailScreen
 import com.unboundds.companion.ui.opponent.OpponentScreen
 import com.unboundds.companion.ui.theme.GoldHighlight
@@ -149,6 +150,7 @@ fun HubScreen() {
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
     var showOpponentScreen by remember { mutableStateOf(false) }
+    var showAnchorScreen by remember { mutableStateOf(false) }
     val phase = portalPhase()
 
     // Party memory reads need to be frequent to feel live; battery/clock barely
@@ -194,8 +196,10 @@ fun HubScreen() {
                     .weight(0.62f)
                     .fillMaxHeight()
                     .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
+                    .clip(RoundedCornerShape(6.dp))
                     .background(HubPanel, RoundedCornerShape(6.dp))
-                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
+                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp))
+                    .clickable { showAnchorScreen = true },
                 contentAlignment = Alignment.Center,
             ) {
                 PixelText("MAP", color = Color(0xFFB0B8A8), fontSize = 16.sp)
@@ -251,6 +255,25 @@ fun HubScreen() {
 
     if (showOpponentScreen) {
         OpponentScreen(onClose = { showOpponentScreen = false })
+    }
+
+    if (showAnchorScreen) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Text(
+                        text = "Close",
+                        modifier = Modifier
+                            .clickable { showAnchorScreen = false }
+                            .padding(8.dp),
+                    )
+                }
+                AnchorScreen()
+            }
+        }
     }
     }
 }

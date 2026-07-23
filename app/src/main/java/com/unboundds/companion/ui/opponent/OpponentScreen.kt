@@ -68,13 +68,15 @@ fun OpponentScreen(onClose: () -> Unit) {
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(OpponentBackground)
-            .padding(16.dp),
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    // Outer Box stays unpadded so PokemonDetailScreen (a direct sibling here,
+    // same pattern as HubScreen) gets the true full screen height instead of
+    // being squeezed by this screen's own content padding.
+    Box(modifier = Modifier.fillMaxSize().background(OpponentBackground)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+        ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 CloseButton(onClose)
             }
