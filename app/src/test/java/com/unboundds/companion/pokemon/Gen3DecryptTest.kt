@@ -15,7 +15,9 @@ class Gen3DecryptTest {
         moves: IntArray,
         pp: IntArray,
     ): ByteArray {
-        val b = ByteArray(0x38)
+        // The live CFRU party layout includes the Misc IV/ability-flags word at 0x48,
+        // so the decoder requires the struct through byte 0x4B.
+        val b = ByteArray(0x4C)
         fun putU16(offset: Int, v: Int) {
             b[offset] = (v and 0xFF).toByte()
             b[offset + 1] = ((v shr 8) and 0xFF).toByte()
