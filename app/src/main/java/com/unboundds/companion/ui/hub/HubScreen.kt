@@ -1,6 +1,7 @@
 package com.unboundds.companion.ui.hub
 
 import android.content.Context
+import com.unboundds.companion.R
 import android.os.BatteryManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -293,8 +295,7 @@ private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
                 .size(50.dp)
                 .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
                 .clip(CircleShape)
-                .clickable(onClick = onClick)
-                .border(2.dp, GoldOutline, CircleShape),
+                .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
             PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
@@ -303,6 +304,11 @@ private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
             } else {
                 PixelText("?", color = HubTextLight, fontSize = 14.sp)
             }
+            Image(
+                painter = painterResource(R.drawable.party_slot_frame),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+            )
         }
         OutlinedPixelText(
             text = "L${mon.level}",
