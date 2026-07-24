@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "UnboundDS"
+rootProject.name = "GBAPal"
 include(":app")

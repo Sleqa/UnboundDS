@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.unboundds.companion"
+    namespace = "com.gbapal.companion"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.unboundds.companion"
+        applicationId = "com.gbapal.companion"
         minSdk = 26
         targetSdk = 35
         versionCode = (System.getenv("APP_VERSION_CODE") ?: "1").toInt()
