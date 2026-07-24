@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,7 +59,6 @@ import com.unboundds.companion.pokemon.MoveData
 import com.unboundds.companion.pokemon.NameTables
 import com.unboundds.companion.pokemon.PartyDecoder
 import com.unboundds.companion.pokemon.SpriteAssets
-import com.unboundds.companion.memory.MapNames
 import com.unboundds.companion.ui.detail.PokemonDetailScreen
 import com.unboundds.companion.ui.opponent.OpponentScreen
 import com.unboundds.companion.ui.theme.GoldHighlight
@@ -167,8 +166,6 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     val names = remember { NameTables.load(context) }
     val baseStats = remember { BaseStats.load(context) }
     val moveData = remember { MoveData.load(context) }
-    val mapNames = remember { MapNames.load(context) }
-    val regionMapAnchor = remember { map.anchors.firstOrNull { it.name == "regionMapSectionId" } }
 
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
     var enemyParty by remember { mutableStateOf<List<HubMon>>(emptyList()) }
@@ -176,7 +173,6 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
     var showOpponentScreen by remember { mutableStateOf(false) }
-    var mapName by remember { mutableStateOf("MAP") }
     var isStarted by remember { mutableStateOf(false) }
     var dimmed by remember { mutableStateOf(false) }
     var lastActivityMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
@@ -213,19 +209,6 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
             if (updatedParty != party) {
                 party = updatedParty
                 changed = true
-            }
-            val anchor = regionMapAnchor
-            if (anchor != null) {
-                val result = client.readCoreMemory(anchor.address, anchor.size)
-                val bytes = (result as? RetroArchClient.Result.Success)
-                    ?.let { parseReadCoreMemoryResponse(it.response) }
-                if (bytes != null && bytes.isNotEmpty()) {
-                    val updatedMapName = mapNames.nameFor(bytes[0].toInt() and 0xFF)
-                    if (updatedMapName != mapName) {
-                        mapName = updatedMapName
-                        changed = true
-                    }
-                }
             }
             if (!showOpponentScreen) {
                 val updatedEnemyParty = readPartyMons(client, map.enemyParty, baseStats)
@@ -292,44 +275,37 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
 
         Spacer(modifier = Modifier.height(2.dp))
 
+        // Party banners pop out from the left/right edges, tips pointing in toward the
+        // portal centerpiece -- slots 1-3 on the left, 4-6 on the right.
         Row(modifier = Modifier.weight(1f)) {
+            BannerColumn(
+                mons = party.take(3),
+                startIndex = 0,
+                phase = phase,
+                pointRight = true,
+                onSelect = { selectedSlot = it },
+                modifier = Modifier.weight(0.34f).fillMaxHeight(),
+            )
             Box(
                 modifier = Modifier
-                    .weight(0.62f)
+                    .weight(0.32f)
                     .fillMaxHeight()
+                    .padding(horizontal = 6.dp)
                     .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                    .background(HubPanel, RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(6.dp))
                     .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                PixelText(mapName.uppercase(), color = Color(0xFFB0B8A8), fontSize = 16.sp)
+                PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
             }
-
-            // Two columns of three: right column = slots 1-3, left column (new) = slots 4-6.
-            // Bottom-aligned so the grid sits down near the OPPONENT/DEX buttons.
-            Row(
-                modifier = Modifier
-                    .weight(0.38f)
-                    .fillMaxHeight()
-                    .padding(start = 8.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                PartyColumn(
-                    mons = party.drop(3).take(3),
-                    startIndex = 3,
-                    phase = phase,
-                    onSelect = { selectedSlot = it },
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                PartyColumn(
-                    mons = party.take(3),
-                    startIndex = 0,
-                    phase = phase,
-                    onSelect = { selectedSlot = it },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            BannerColumn(
+                mons = party.drop(3).take(3),
+                startIndex = 3,
+                phase = phase,
+                pointRight = false,
+                onSelect = { selectedSlot = it },
+                modifier = Modifier.weight(0.34f).fillMaxHeight(),
+            )
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -377,21 +353,48 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
 }
 
 @Composable
-private fun PartyColumn(
+private fun BannerColumn(
     mons: List<HubMon>,
     startIndex: Int,
     phase: Int,
+    pointRight: Boolean,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Half height so each of the 3 slots matches the original 1x6 layout's per-slot
-    // size (fullHeight / 6) instead of stretching to fill the whole column.
-    Column(modifier = modifier.fillMaxHeight(0.5f), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                mons.getOrNull(i)?.let { mon -> MonCircle(mon, phase) { onSelect(startIndex + i) } }
+                mons.getOrNull(i)?.let { mon ->
+                    MonBanner(mon, phase, pointRight) { onSelect(startIndex + i) }
+                }
             }
         }
+    }
+}
+
+/**
+ * A pennant-style banner: a rectangle whose inner edge (the side facing the
+ * portal centerpiece) is cut to a single point, like a tab popping out from
+ * the screen edge. [pointRight] controls which side the tip points to.
+ */
+private fun bannerShape(pointRight: Boolean) = GenericShape { size, _ ->
+    val w = size.width
+    val h = size.height
+    val notch = w * 0.32f
+    if (pointRight) {
+        moveTo(0f, 0f)
+        lineTo(w - notch, 0f)
+        lineTo(w, h / 2f)
+        lineTo(w - notch, h)
+        lineTo(0f, h)
+        close()
+    } else {
+        moveTo(w, 0f)
+        lineTo(notch, 0f)
+        lineTo(0f, h / 2f)
+        lineTo(notch, h)
+        lineTo(w, h)
+        close()
     }
 }
 
@@ -412,32 +415,39 @@ private fun HubButton(label: String, phase: Int, onClick: () -> Unit = {}, modif
 }
 
 @Composable
-internal fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
+internal fun MonBanner(mon: HubMon, phase: Int, pointRight: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
     val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
+    val shape = remember(pointRight) { bannerShape(pointRight) }
 
-    Box(contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                .clip(CircleShape)
-                .clickable(onClick = onClick)
-                .border(2.dp, GoldOutline, CircleShape),
-            contentAlignment = Alignment.Center,
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .shadow(elevation = 3.dp, shape = shape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .border(2.dp, GoldOutline, shape),
+        contentAlignment = if (pointRight) Alignment.CenterStart else Alignment.CenterEnd,
+    ) {
+        PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
             if (sprite != null) {
-                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
+                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(34.dp))
             } else {
-                PixelText("?", color = HubTextLight, fontSize = 14.sp)
+                Box(modifier = Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                    PixelText("?", color = HubTextLight, fontSize = 12.sp)
+                }
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                OutlinedPixelText(mon.nickname.uppercase(), fontSize = 8.sp)
+                OutlinedPixelText("Lv${mon.level}", fontSize = 8.sp)
             }
         }
-        OutlinedPixelText(
-            text = "L${mon.level}",
-            fontSize = 8.sp,
-            modifier = Modifier.align(Alignment.BottomEnd),
-        )
     }
 }
 
