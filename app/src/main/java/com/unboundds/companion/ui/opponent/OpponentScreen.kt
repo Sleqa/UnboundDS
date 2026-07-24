@@ -111,15 +111,16 @@ fun OpponentScreen(onClose: () -> Unit, onDataChanged: () -> Unit) {
                     phase = phase,
                     pointRight = true,
                     onSelect = { selectedSlot = it },
-                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                    modifier = Modifier.weight(0.4f).fillMaxHeight(),
                 )
+                Spacer(modifier = Modifier.weight(0.2f))
                 BannerColumn(
                     mons = opponents.drop(3).take(3),
                     startIndex = 3,
                     phase = phase,
                     pointRight = false,
                     onSelect = { selectedSlot = it },
-                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                    modifier = Modifier.weight(0.4f).fillMaxHeight(),
                 )
             }
         }

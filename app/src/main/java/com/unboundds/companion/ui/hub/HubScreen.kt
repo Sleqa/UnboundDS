@@ -42,6 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -276,8 +277,8 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
         Spacer(modifier = Modifier.height(2.dp))
 
         // Party banners pop out from the left/right edges, tips pointing in toward
-        // the middle so the two columns' points nearly meet -- slots 1-3 on the
-        // left, 4-6 on the right. No center panel; the banners fill the row.
+        // the middle but stopping at 40% of the row each, leaving a gap in the
+        // center -- slots 1-3 on the left, 4-6 on the right.
         Row(modifier = Modifier.weight(1f)) {
             BannerColumn(
                 mons = party.take(3),
@@ -285,15 +286,16 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
                 phase = phase,
                 pointRight = true,
                 onSelect = { selectedSlot = it },
-                modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                modifier = Modifier.weight(0.4f).fillMaxHeight(),
             )
+            Spacer(modifier = Modifier.weight(0.2f))
             BannerColumn(
                 mons = party.drop(3).take(3),
                 startIndex = 3,
                 phase = phase,
                 pointRight = false,
                 onSelect = { selectedSlot = it },
-                modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                modifier = Modifier.weight(0.4f).fillMaxHeight(),
             )
         }
 
@@ -350,12 +352,16 @@ internal fun BannerColumn(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    // Bottom-anchored: the bottom banner stays put and any leftover column
+    // height collapses above it, pulling the other rows down closer to it
+    // instead of spreading all three evenly across the full height.
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
+    ) {
         repeat(3) { i ->
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                mons.getOrNull(i)?.let { mon ->
-                    MonBanner(mon, phase, pointRight) { onSelect(startIndex + i) }
-                }
+            mons.getOrNull(i)?.let { mon ->
+                MonBanner(mon, phase, pointRight) { onSelect(startIndex + i) }
             }
         }
     }
@@ -364,26 +370,44 @@ internal fun BannerColumn(
 /**
  * A banner shape whose inner edge (the side facing the middle of the screen)
  * is a single slant rather than a pointed tip: the top edge runs the full
- * width while the bottom edge stops short, joined by one diagonal line.
- * [pointRight] controls which side the slant faces.
+ * width while the bottom edge stops short, joined by one diagonal line, and
+ * every corner is rounded. [pointRight] controls which side the slant faces.
  */
 private fun bannerShape(pointRight: Boolean) = GenericShape { size, _ ->
     val w = size.width
     val h = size.height
-    val slant = w * 0.28f
-    if (pointRight) {
-        moveTo(0f, 0f)
-        lineTo(w, 0f)
-        lineTo(w - slant, h)
-        lineTo(0f, h)
-        close()
+    val slant = w * 0.14f
+    val corner = minOf(w, h) * 0.22f
+    val points = if (pointRight) {
+        listOf(Offset(0f, 0f), Offset(w, 0f), Offset(w - slant, h), Offset(0f, h))
     } else {
-        moveTo(w, 0f)
-        lineTo(0f, 0f)
-        lineTo(slant, h)
-        lineTo(w, h)
-        close()
+        listOf(Offset(w, 0f), Offset(0f, 0f), Offset(slant, h), Offset(w, h))
     }
+    roundedPolygon(points, corner)
+}
+
+/** Traces a closed polygon with each corner replaced by a rounded curve. */
+private fun Path.roundedPolygon(points: List<Offset>, radius: Float) {
+    val n = points.size
+    for (i in 0 until n) {
+        val prev = points[(i - 1 + n) % n]
+        val curr = points[i]
+        val next = points[(i + 1) % n]
+        val r = radius
+            .coerceAtMost((curr - prev).getDistance() / 2f)
+            .coerceAtMost((next - curr).getDistance() / 2f)
+        val approach = curr.towards(prev, r)
+        val depart = curr.towards(next, r)
+        if (i == 0) moveTo(approach.x, approach.y) else lineTo(approach.x, approach.y)
+        quadraticTo(curr.x, curr.y, depart.x, depart.y)
+    }
+    close()
+}
+
+private fun Offset.towards(target: Offset, distance: Float): Offset {
+    val delta = target - this
+    val len = delta.getDistance()
+    return if (len <= 0f) this else this + delta * (distance / len)
 }
 
 @Composable
