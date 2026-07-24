@@ -34,10 +34,8 @@ import kotlin.math.sqrt
  * read as overpowering.
  */
 
-// A slow palette shift retains the portal effect without continuously redrawing
-// the companion screen at game-like frame rates.
-private const val PORTAL_STEPS = 8
-private const val PORTAL_CYCLE_MS = 8000
+private const val PORTAL_STEPS = 30
+private const val PORTAL_CYCLE_MS = 1400
 
 private val PortalLight = Color(0xFF7A30C0)
 private val PortalDark = Color(0xFF561F96)

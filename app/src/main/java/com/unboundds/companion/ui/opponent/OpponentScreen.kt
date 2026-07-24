@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -178,7 +179,12 @@ private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
         ) {
             PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
             if (sprite != null) {
-                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(42.dp))
+                Image(
+                    bitmap = sprite,
+                    contentDescription = null,
+                    filterQuality = FilterQuality.None,
+                    modifier = Modifier.size(42.dp),
+                )
             } else {
                 PixelText("?", color = OpponentTextLight, fontSize = 14.sp)
             }

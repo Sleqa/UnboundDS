@@ -41,6 +41,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -73,11 +74,10 @@ import java.util.Calendar
 
 private const val PARTY_POLL_INTERVAL_MS = 10_000L
 private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
-private const val IDLE_DIM_DELAY_MS = 10_000L
+private const val IDLE_DIM_DELAY_MS = 15_000L
 private const val IDLE_DIM_BRIGHTNESS = 0.08f
 
 private val HubBackground = Color(0xFF000000)
-private val HubPanel = Color(0xFF141414) // near-black, a touch lighter than the OLED background
 private val HubTextLight = Color(0xFFF0EEDA)
 
 data class HubMon(
@@ -275,8 +275,9 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // Party banners pop out from the left/right edges, tips pointing in toward the
-        // portal centerpiece -- slots 1-3 on the left, 4-6 on the right.
+        // Party banners pop out from the left/right edges, tips pointing in toward
+        // the middle so the two columns' points nearly meet -- slots 1-3 on the
+        // left, 4-6 on the right. No center panel; the banners fill the row.
         Row(modifier = Modifier.weight(1f)) {
             BannerColumn(
                 mons = party.take(3),
@@ -284,27 +285,15 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
                 phase = phase,
                 pointRight = true,
                 onSelect = { selectedSlot = it },
-                modifier = Modifier.weight(0.34f).fillMaxHeight(),
+                modifier = Modifier.weight(0.5f).fillMaxHeight(),
             )
-            Box(
-                modifier = Modifier
-                    .weight(0.32f)
-                    .fillMaxHeight()
-                    .padding(horizontal = 6.dp)
-                    .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp), ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                    .clip(RoundedCornerShape(6.dp))
-                    .border(2.dp, GoldOutline, RoundedCornerShape(6.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
-            }
             BannerColumn(
                 mons = party.drop(3).take(3),
                 startIndex = 3,
                 phase = phase,
                 pointRight = false,
                 onSelect = { selectedSlot = it },
-                modifier = Modifier.weight(0.34f).fillMaxHeight(),
+                modifier = Modifier.weight(0.5f).fillMaxHeight(),
             )
         }
 
@@ -361,7 +350,7 @@ private fun BannerColumn(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 mons.getOrNull(i)?.let { mon ->
@@ -374,7 +363,7 @@ private fun BannerColumn(
 
 /**
  * A pennant-style banner: a rectangle whose inner edge (the side facing the
- * portal centerpiece) is cut to a single point, like a tab popping out from
+ * middle of the screen) is cut to a single point, like a tab popping out from
  * the screen edge. [pointRight] controls which side the tip points to.
  */
 private fun bannerShape(pointRight: Boolean) = GenericShape { size, _ ->
@@ -423,7 +412,7 @@ internal fun MonBanner(mon: HubMon, phase: Int, pointRight: Boolean, onClick: ()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(72.dp)
             .shadow(elevation = 3.dp, shape = shape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
             .clip(shape)
             .clickable(onClick = onClick)
@@ -436,16 +425,21 @@ internal fun MonBanner(mon: HubMon, phase: Int, pointRight: Boolean, onClick: ()
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (sprite != null) {
-                Image(bitmap = sprite, contentDescription = null, modifier = Modifier.size(34.dp))
+                Image(
+                    bitmap = sprite,
+                    contentDescription = null,
+                    filterQuality = FilterQuality.None,
+                    modifier = Modifier.size(46.dp),
+                )
             } else {
-                Box(modifier = Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(46.dp), contentAlignment = Alignment.Center) {
                     PixelText("?", color = HubTextLight, fontSize = 12.sp)
                 }
             }
             Spacer(modifier = Modifier.width(6.dp))
             Column {
-                OutlinedPixelText(mon.nickname.uppercase(), fontSize = 8.sp)
-                OutlinedPixelText("Lv${mon.level}", fontSize = 8.sp)
+                OutlinedPixelText(mon.nickname.uppercase(), fontSize = 9.sp)
+                OutlinedPixelText("Lv${mon.level}", fontSize = 9.sp)
             }
         }
     }
