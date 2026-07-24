@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -260,21 +261,19 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
             .background(HubBackground)
             .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 3.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PixelText(time, color = Color.White, fontSize = 9.sp)
-            Spacer(modifier = Modifier.width(8.dp))
-            BatteryIcon(percent = battery)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "⚙",
-                color = Color.White,
-                fontSize = 17.sp,
-                modifier = Modifier.clickable(onClick = onDevToolsRequested),
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TopBarBanner(phase = phase) {
+                PixelText(time, color = Color.White, fontSize = 9.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                BatteryIcon(percent = battery)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "⚙",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    modifier = Modifier.clickable(onClick = onDevToolsRequested),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(2.dp))
@@ -411,6 +410,25 @@ private fun Offset.towards(target: Offset, distance: Float): Offset {
     val delta = target - this
     val len = delta.getDistance()
     return if (len <= 0f) this else this + delta * (distance / len)
+}
+
+/** Same pop-out banner style as the party rows, sized to hug the clock/battery/cog row. */
+@Composable
+private fun TopBarBanner(phase: Int, content: @Composable RowScope.() -> Unit) {
+    val shape = remember { bannerShape(pointRight = false) }
+    Box(
+        modifier = Modifier
+            .shadow(elevation = 3.dp, shape = shape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
+            .clip(shape)
+            .border(2.dp, GoldOutline, shape),
+    ) {
+        PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
+        Row(
+            modifier = Modifier.padding(start = 18.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
+    }
 }
 
 @Composable
