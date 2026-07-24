@@ -159,7 +159,7 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     val battleFlagAnchor = remember { map.anchors.firstOrNull { it.name == "battleStateFlag" } }
 
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
-    var lastBattleFlag by remember { mutableStateOf(0) }
+    var lastBattleFlag by remember { mutableStateOf<Int?>(null) }
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
@@ -191,7 +191,12 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
                         ?.firstOrNull()
                         ?.let { it.toInt() and 0xFF }
                         ?: 0
-                    if (lastBattleFlag == 0 && flagByte != 0) {
+                    // First read after a (re)start just calibrates the baseline -- it must
+                    // never trigger on its own, otherwise a stale nonzero value at cold
+                    // start (e.g. right after launch or closing dev tools) looks like an
+                    // edge and pops the opponent screen even though no battle just began.
+                    val previous = lastBattleFlag
+                    if (previous != null && previous == 0 && flagByte != 0) {
                         showOpponentScreen = true
                     }
                     lastBattleFlag = flagByte
@@ -361,7 +366,7 @@ private fun TopBarBanner(content: @Composable RowScope.() -> Unit) {
             .border(2.dp, FrameOutline, shape),
     ) {
         Row(
-            modifier = Modifier.padding(start = 18.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+            modifier = Modifier.padding(start = 22.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             content = content,
         )
