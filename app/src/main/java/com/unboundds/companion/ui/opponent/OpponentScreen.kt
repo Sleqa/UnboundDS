@@ -1,6 +1,5 @@
 package com.unboundds.companion.ui.opponent
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,12 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -26,8 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,29 +35,24 @@ import com.unboundds.companion.network.RetroArchClient
 import com.unboundds.companion.pokemon.BaseStats
 import com.unboundds.companion.pokemon.MoveData
 import com.unboundds.companion.pokemon.NameTables
-import com.unboundds.companion.pokemon.SpriteAssets
 import com.unboundds.companion.ui.detail.PokemonDetailScreen
+import com.unboundds.companion.ui.hub.BannerColumn
 import com.unboundds.companion.ui.hub.HubMon
 import com.unboundds.companion.ui.hub.OutlinedPixelText
 import com.unboundds.companion.ui.hub.readPartyMons
-import com.unboundds.companion.ui.theme.GoldHighlight
 import com.unboundds.companion.ui.theme.GoldOutline
-import com.unboundds.companion.ui.theme.PixelText
-import com.unboundds.companion.ui.theme.PortalCanvas
 import com.unboundds.companion.ui.theme.portalPhase
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-private val OpponentTextLight = Color(0xFFF0EEDA)
-
 private const val OPPONENT_POLL_INTERVAL_MS = 10_000L
 private val OpponentBackground = Color(0xFF000000)
 
 /**
- * Opponent party screen: a 3x2 grid of the enemy party, bottom-aligned so the
- * top stays clear for future trainer info/battle context. Tapping a mon opens
- * the same detail screen used for the player's own party.
+ * Opponent party screen: the enemy party in the same left/right banner
+ * columns as the hub -- slots 1-3 on the left, 4-6 on the right. Tapping a
+ * mon opens the same detail screen used for the player's own party.
  */
 @Composable
 fun OpponentScreen(onClose: () -> Unit, onDataChanged: () -> Unit) {
@@ -111,25 +102,25 @@ fun OpponentScreen(onClose: () -> Unit, onDataChanged: () -> Unit) {
                 CloseButton(onClose)
             }
 
-            // Top kept intentionally empty for future trainer/battle info; the
-            // grid stays pinned to the bottom.
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            repeat(2) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    repeat(3) { col ->
-                        val idx = row * 3 + col
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            opponents.getOrNull(idx)?.let { mon ->
-                                MonCircle(mon, phase) { selectedSlot = idx }
-                            }
-                        }
-                    }
-                }
-                if (row == 0) Spacer(modifier = Modifier.height(14.dp))
+            Row(modifier = Modifier.weight(1f)) {
+                BannerColumn(
+                    mons = opponents.take(3),
+                    startIndex = 0,
+                    phase = phase,
+                    pointRight = true,
+                    onSelect = { selectedSlot = it },
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                )
+                BannerColumn(
+                    mons = opponents.drop(3).take(3),
+                    startIndex = 3,
+                    phase = phase,
+                    pointRight = false,
+                    onSelect = { selectedSlot = it },
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                )
             }
         }
 
@@ -159,40 +150,5 @@ private fun CloseButton(onClose: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         OutlinedPixelText("CLOSE", fontSize = 9.sp)
-    }
-}
-
-@Composable
-private fun MonCircle(mon: HubMon, phase: Int, onClick: () -> Unit) {
-    val context = LocalContext.current
-    val sprite = remember(mon.speciesId) { SpriteAssets.frontSprite(context, mon.speciesId) }
-
-    Box(contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .shadow(elevation = 3.dp, shape = CircleShape, ambientColor = GoldHighlight, spotColor = GoldHighlight)
-                .clip(CircleShape)
-                .clickable(onClick = onClick)
-                .border(2.dp, GoldOutline, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            PortalCanvas(phase = phase, modifier = Modifier.matchParentSize())
-            if (sprite != null) {
-                Image(
-                    bitmap = sprite,
-                    contentDescription = null,
-                    filterQuality = FilterQuality.None,
-                    modifier = Modifier.size(42.dp),
-                )
-            } else {
-                PixelText("?", color = OpponentTextLight, fontSize = 14.sp)
-            }
-        }
-        OutlinedPixelText(
-            text = "L${mon.level}",
-            fontSize = 8.sp,
-            modifier = Modifier.align(Alignment.BottomEnd),
-        )
     }
 }

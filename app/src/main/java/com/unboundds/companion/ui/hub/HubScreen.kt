@@ -342,7 +342,7 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
 }
 
 @Composable
-private fun BannerColumn(
+internal fun BannerColumn(
     mons: List<HubMon>,
     startIndex: Int,
     phase: Int,
@@ -350,7 +350,7 @@ private fun BannerColumn(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         repeat(3) { i ->
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 mons.getOrNull(i)?.let { mon ->
@@ -362,26 +362,25 @@ private fun BannerColumn(
 }
 
 /**
- * A pennant-style banner: a rectangle whose inner edge (the side facing the
- * middle of the screen) is cut to a single point, like a tab popping out from
- * the screen edge. [pointRight] controls which side the tip points to.
+ * A banner shape whose inner edge (the side facing the middle of the screen)
+ * is a single slant rather than a pointed tip: the top edge runs the full
+ * width while the bottom edge stops short, joined by one diagonal line.
+ * [pointRight] controls which side the slant faces.
  */
 private fun bannerShape(pointRight: Boolean) = GenericShape { size, _ ->
     val w = size.width
     val h = size.height
-    val notch = w * 0.32f
+    val slant = w * 0.28f
     if (pointRight) {
         moveTo(0f, 0f)
-        lineTo(w - notch, 0f)
-        lineTo(w, h / 2f)
-        lineTo(w - notch, h)
+        lineTo(w, 0f)
+        lineTo(w - slant, h)
         lineTo(0f, h)
         close()
     } else {
         moveTo(w, 0f)
-        lineTo(notch, 0f)
-        lineTo(0f, h / 2f)
-        lineTo(notch, h)
+        lineTo(0f, 0f)
+        lineTo(slant, h)
         lineTo(w, h)
         close()
     }
