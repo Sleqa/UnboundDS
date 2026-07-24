@@ -39,16 +39,15 @@ import com.gbapal.companion.pokemon.NameTables
 import com.gbapal.companion.ui.detail.PokemonDetailScreen
 import com.gbapal.companion.ui.hub.BannerColumn
 import com.gbapal.companion.ui.hub.HubMon
-import com.gbapal.companion.ui.hub.OutlinedPixelText
 import com.gbapal.companion.ui.hub.readPartyMons
-import com.gbapal.companion.ui.theme.FrameOutline
-import androidx.compose.ui.graphics.Color
+import com.gbapal.companion.ui.theme.NocturneAccent
+import com.gbapal.companion.ui.theme.NocturneBg
+import com.gbapal.companion.ui.theme.NocturneLabel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 private const val OPPONENT_POLL_INTERVAL_MS = 10_000L
 private const val PLAYER_MOVE_POLL_INTERVAL_MS = 1_000L
-private val OpponentBackground = Color(0xFF000000)
 
 /**
  * Opponent party screen: the enemy party in the same left/right banner
@@ -118,7 +117,7 @@ fun OpponentScreen(onClose: () -> Unit) {
     // Outer Box stays unpadded so PokemonDetailScreen (a direct sibling here,
     // same pattern as HubScreen) gets the true full screen height instead of
     // being squeezed by this screen's own content padding.
-    Box(modifier = Modifier.fillMaxSize().background(OpponentBackground)) {
+    Box(modifier = Modifier.fillMaxSize().background(NocturneBg)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -168,11 +167,11 @@ private fun CloseButton(onClose: () -> Unit) {
         modifier = Modifier
             .height(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            .border(2.dp, FrameOutline, RoundedCornerShape(6.dp))
+            .border(1.dp, NocturneAccent, RoundedCornerShape(6.dp))
             .clickable(onClick = onClose)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        OutlinedPixelText("CLOSE", fontSize = 9.sp)
+        NocturneLabel("CLOSE", fontSize = 9.sp)
     }
 }

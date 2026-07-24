@@ -35,18 +35,16 @@ import com.gbapal.companion.pokemon.MoveData
 import com.gbapal.companion.pokemon.NameTables
 import com.gbapal.companion.pokemon.SpriteAssets
 import com.gbapal.companion.ui.hub.HubMon
-import com.gbapal.companion.ui.hub.OutlinedPixelText
-import com.gbapal.companion.ui.theme.FrameGlow
-import com.gbapal.companion.ui.theme.FrameOutline
+import com.gbapal.companion.ui.theme.NocturneAccent
+import com.gbapal.companion.ui.theme.NocturneAccentGlow
+import com.gbapal.companion.ui.theme.NocturneBg
+import com.gbapal.companion.ui.theme.NocturneLabel
+import com.gbapal.companion.ui.theme.NocturneSurface
+import com.gbapal.companion.ui.theme.NocturneText
+import com.gbapal.companion.ui.theme.NocturneTextMuted
 import com.gbapal.companion.ui.theme.PixelHpBar
-import com.gbapal.companion.ui.theme.PixelText
 
-private val DetailBackground = Color(0xFF000000)
-private val DetailPanel = Color(0xFF141414)
-private val DetailTextLight = Color(0xFFF0EEDA)
-private val DetailTextDim = Color(0xFFB0B8A8)
-
-/** Full-screen retro-styled summary for one party Pokemon: stats, moveset+PP, item, ability. */
+/** Full-screen Nocturne-styled summary for one party Pokemon: stats, moveset+PP, item, ability. */
 @Composable
 fun PokemonDetailScreen(
     mon: HubMon,
@@ -68,7 +66,7 @@ fun PokemonDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DetailBackground)
+            .background(NocturneBg)
             .padding(14.dp)
             .verticalScroll(rememberScrollState()),
     ) {
@@ -79,7 +77,7 @@ fun PokemonDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    PixelText(displayName.uppercase(), color = DetailTextLight, fontSize = 14.sp)
+                    NocturneLabel(displayName.uppercase(), color = NocturneText, fontSize = 14.sp)
                     types.forEach { type ->
                         Spacer(modifier = Modifier.width(6.dp))
                         TypeBadge(type)
@@ -94,10 +92,10 @@ fun PokemonDetailScreen(
                 Box(
                     modifier = Modifier
                         .size(84.dp)
-                        .shadow(elevation = 4.dp, shape = CircleShape, ambientColor = FrameGlow, spotColor = FrameGlow)
+                        .shadow(elevation = 4.dp, shape = CircleShape, ambientColor = NocturneAccentGlow, spotColor = NocturneAccentGlow)
                         .clip(CircleShape)
-                        .background(DetailPanel)
-                        .border(2.dp, FrameOutline, CircleShape),
+                        .background(NocturneSurface)
+                        .border(1.dp, NocturneAccent, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (sprite != null) {
@@ -108,18 +106,18 @@ fun PokemonDetailScreen(
                             modifier = Modifier.size(72.dp),
                         )
                     } else {
-                        PixelText("?", color = DetailTextLight, fontSize = 20.sp)
+                        NocturneLabel("?", color = NocturneText, fontSize = 20.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    PixelText("Lv ${mon.level}", color = DetailTextLight, fontSize = 10.sp)
+                    NocturneLabel("Lv ${mon.level}", color = NocturneText, fontSize = 10.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    PixelText(
+                    NocturneLabel(
                         "Item: ${names.itemName(mon.heldItemId)}   Ability: ${names.abilityName(mon.abilityId)}",
-                        color = DetailTextDim,
+                        color = NocturneTextMuted,
                         fontSize = 8.sp,
                     )
                     Spacer(modifier = Modifier.height(6.dp))
@@ -128,15 +126,15 @@ fun PokemonDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    PixelText("HP ${mon.currentHp}/${mon.maxHp}", color = DetailTextLight, fontSize = 9.sp)
+                    NocturneLabel("HP ${mon.currentHp}/${mon.maxHp}", color = NocturneText, fontSize = 9.sp)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            DetailPanelBox {
+            NocturneSurfaceBox {
                 Column {
-                    PixelText("STATS", color = DetailTextDim, fontSize = 9.sp)
+                    NocturneLabel("STATS", color = NocturneTextMuted, fontSize = 9.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     StatsRow(
                         listOf(
@@ -152,9 +150,9 @@ fun PokemonDetailScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            DetailPanelBox {
+            NocturneSurfaceBox {
                 Column {
-                    PixelText("MOVES", color = DetailTextDim, fontSize = 9.sp)
+                    NocturneLabel("MOVES", color = NocturneTextMuted, fontSize = 9.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     val rows = mon.moves.mapIndexed { i, moveId -> moveId to mon.pp.getOrElse(i) { 0 } }.chunked(2)
                     rows.forEachIndexed { rowIndex, rowSlots ->
@@ -183,13 +181,13 @@ fun PokemonDetailScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            DetailPanelBox {
+            NocturneSurfaceBox {
                 Column {
-                    PixelText("WEAKNESSES", color = DetailTextDim, fontSize = 9.sp)
+                    NocturneLabel("WEAKNESSES", color = NocturneTextMuted, fontSize = 9.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     TypeBadgeRow(weaknesses)
                     Spacer(modifier = Modifier.height(10.dp))
-                    PixelText("RESISTS", color = DetailTextDim, fontSize = 9.sp)
+                    NocturneLabel("RESISTS", color = NocturneTextMuted, fontSize = 9.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     TypeBadgeRow(resists)
                 }
@@ -209,9 +207,9 @@ private fun StatsRow(stats: List<Pair<String, Int>>) {
     ) {
         stats.forEach { (label, value) ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PixelText(label, color = DetailTextDim, fontSize = 8.sp)
+                NocturneLabel(label, color = NocturneTextMuted, fontSize = 8.sp)
                 Spacer(modifier = Modifier.height(2.dp))
-                PixelText(value.toString(), color = DetailTextLight, fontSize = 10.sp)
+                NocturneLabel(value.toString(), color = NocturneText, fontSize = 10.sp)
             }
         }
     }
@@ -238,7 +236,7 @@ private val TypeColors = mapOf(
     "Fairy" to Color(0xFFEE99AC),
 )
 
-private fun typeColor(type: String): Color = TypeColors[type] ?: DetailTextDim
+private fun typeColor(type: String): Color = TypeColors[type] ?: NocturneTextMuted
 
 private val TypeAbbrev = mapOf(
     "Normal" to "NOR",
@@ -313,7 +311,7 @@ private fun TypeBadge(type: String, modifier: Modifier = Modifier) {
             .padding(horizontal = 5.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
-        PixelText(TypeAbbrev[type] ?: type.take(3).uppercase(), color = Color.White, fontSize = 7.sp)
+        NocturneLabel(TypeAbbrev[type] ?: type.take(3).uppercase(), color = Color.White, fontSize = 7.sp)
     }
 }
 
@@ -321,7 +319,7 @@ private fun TypeBadge(type: String, modifier: Modifier = Modifier) {
 @Composable
 private fun TypeBadgeRow(types: List<String>) {
     if (types.isEmpty()) {
-        PixelText("NONE", color = DetailTextDim, fontSize = 8.sp)
+        NocturneLabel("NONE", color = NocturneTextMuted, fontSize = 8.sp)
         return
     }
     val rows = types.chunked(6)
@@ -347,27 +345,27 @@ private fun MoveCard(name: String, type: String, pp: Int, ppMax: Int, modifier: 
             .padding(8.dp),
     ) {
         Column {
-            PixelText(name.uppercase(), color = color, fontSize = 9.sp)
+            NocturneLabel(name.uppercase(), color = color, fontSize = 9.sp)
             Spacer(modifier = Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                PixelText(type.uppercase(), color = DetailTextDim, fontSize = 7.sp)
-                PixelText("PP $pp/$ppMax", color = DetailTextDim, fontSize = 7.sp)
+                NocturneLabel(type.uppercase(), color = NocturneTextMuted, fontSize = 7.sp)
+                NocturneLabel("PP $pp/$ppMax", color = NocturneTextMuted, fontSize = 7.sp)
             }
         }
     }
 }
 
 @Composable
-private fun DetailPanelBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun NocturneSurfaceBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(elevation = 2.dp, shape = RoundedCornerShape(6.dp), ambientColor = FrameGlow, spotColor = FrameGlow)
-            .background(DetailPanel, RoundedCornerShape(6.dp))
-            .border(2.dp, FrameOutline, RoundedCornerShape(6.dp))
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(6.dp), ambientColor = NocturneAccentGlow, spotColor = NocturneAccentGlow)
+            .background(NocturneSurface, RoundedCornerShape(6.dp))
+            .border(1.dp, NocturneAccent, RoundedCornerShape(6.dp))
             .padding(10.dp),
     ) {
         content()
@@ -380,11 +378,11 @@ private fun CloseButton(onClose: () -> Unit) {
         modifier = Modifier
             .height(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            .border(2.dp, FrameOutline, RoundedCornerShape(6.dp))
+            .border(1.dp, NocturneAccent, RoundedCornerShape(6.dp))
             .clickable(onClick = onClose)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        OutlinedPixelText("CLOSE", fontSize = 9.sp)
+        NocturneLabel("CLOSE", fontSize = 9.sp)
     }
 }

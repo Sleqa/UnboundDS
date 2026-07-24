@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,7 +42,6 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -61,20 +59,19 @@ import com.gbapal.companion.pokemon.PartyDecoder
 import com.gbapal.companion.pokemon.SpriteAssets
 import com.gbapal.companion.ui.detail.PokemonDetailScreen
 import com.gbapal.companion.ui.opponent.OpponentScreen
-import com.gbapal.companion.ui.theme.FrameGlow
-import com.gbapal.companion.ui.theme.FrameOutline
-import com.gbapal.companion.ui.theme.PixelText
-import com.gbapal.companion.ui.theme.RetroTheme
+import com.gbapal.companion.ui.theme.NocturneAccent
+import com.gbapal.companion.ui.theme.NocturneAccentGlow
+import com.gbapal.companion.ui.theme.NocturneBg
+import com.gbapal.companion.ui.theme.NocturneLabel
+import com.gbapal.companion.ui.theme.NocturneSurface
+import com.gbapal.companion.ui.theme.NocturneText
+import com.gbapal.companion.ui.theme.NocturneTextMuted
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.Calendar
 
 private const val PARTY_POLL_INTERVAL_MS = 10_000L
 private const val CLOCK_BATTERY_POLL_INTERVAL_MS = 15_000L
-
-private val HubBackground = Color(0xFF000000)
-private val HubPanel = Color(0xFF1A1A1A)
-private val HubTextLight = Color(0xFFF0EEDA)
 
 data class HubMon(
     val speciesId: Int,
@@ -221,19 +218,19 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HubBackground)
+            .background(NocturneBg)
             .padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = 3.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TopBarBanner {
-                PixelText(time, color = Color.White, fontSize = 9.sp)
+                NocturneLabel(time, color = NocturneText, fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))
                 BatteryIcon(percent = battery)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
+                NocturneLabel(
                     text = "⚙",
-                    color = Color.White,
-                    fontSize = 17.sp,
+                    color = NocturneAccent,
+                    fontSize = 18.sp,
                     modifier = Modifier.clickable(onClick = onDevToolsRequested),
                 )
             }
@@ -360,10 +357,10 @@ private fun TopBarBanner(content: @Composable RowScope.() -> Unit) {
     val shape = remember { bannerShape(pointRight = false) }
     Box(
         modifier = Modifier
-            .shadow(elevation = 3.dp, shape = shape, ambientColor = FrameGlow, spotColor = FrameGlow)
+            .shadow(elevation = 3.dp, shape = shape, ambientColor = NocturneAccentGlow, spotColor = NocturneAccentGlow)
             .clip(shape)
-            .background(HubPanel)
-            .border(2.dp, FrameOutline, shape),
+            .background(NocturneSurface)
+            .border(1.dp, NocturneAccent, shape),
     ) {
         Row(
             modifier = Modifier.padding(start = 22.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
@@ -378,14 +375,14 @@ private fun HubButton(label: String, onClick: () -> Unit = {}, modifier: Modifie
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .shadow(elevation = 3.dp, shape = RoundedCornerShape(8.dp), ambientColor = FrameGlow, spotColor = FrameGlow)
-            .clip(RoundedCornerShape(8.dp))
-            .background(HubPanel)
-            .border(2.dp, FrameOutline, RoundedCornerShape(8.dp))
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(10.dp), ambientColor = NocturneAccentGlow, spotColor = NocturneAccentGlow)
+            .clip(RoundedCornerShape(10.dp))
+            .background(NocturneSurface)
+            .border(1.dp, NocturneAccent, RoundedCornerShape(10.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        OutlinedPixelText(label, fontSize = 11.sp)
+        NocturneLabel(label, color = NocturneAccent, fontSize = 12.sp)
     }
 }
 
@@ -399,11 +396,11 @@ internal fun MonBanner(mon: HubMon, pointRight: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
-            .shadow(elevation = 3.dp, shape = shape, ambientColor = FrameGlow, spotColor = FrameGlow)
+            .shadow(elevation = 3.dp, shape = shape, ambientColor = NocturneAccentGlow, spotColor = NocturneAccentGlow)
             .clip(shape)
-            .background(HubPanel)
+            .background(NocturneSurface)
             .clickable(onClick = onClick)
-            .border(2.dp, FrameOutline, shape),
+            .border(1.dp, NocturneAccent, shape),
         contentAlignment = if (pointRight) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
         Row(
@@ -419,47 +416,19 @@ internal fun MonBanner(mon: HubMon, pointRight: Boolean, onClick: () -> Unit) {
                 )
             } else {
                 Box(modifier = Modifier.size(46.dp), contentAlignment = Alignment.Center) {
-                    PixelText("?", color = HubTextLight, fontSize = 12.sp)
+                    NocturneLabel("?", color = NocturneTextMuted, fontSize = 14.sp)
                 }
             }
             Spacer(modifier = Modifier.width(6.dp))
             Column {
-                OutlinedPixelText(mon.nickname.uppercase(), fontSize = 9.sp)
-                OutlinedPixelText("Lv${mon.level}", fontSize = 9.sp)
+                NocturneLabel(mon.nickname.uppercase(), color = NocturneText, fontSize = 11.sp)
+                NocturneLabel("Lv${mon.level}", color = NocturneTextMuted, fontSize = 10.sp)
             }
         }
     }
 }
 
-/** White pixel text with a dark stroke outline so it reads over the panel background. */
-@Composable
-fun OutlinedPixelText(
-    text: String,
-    fontSize: androidx.compose.ui.unit.TextUnit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier) {
-        Text(
-            text = text,
-            style = TextStyle(
-                fontFamily = RetroTheme.pixelFont,
-                fontSize = fontSize,
-                color = Color(0xFF14041E),
-                drawStyle = Stroke(width = 6f),
-            ),
-        )
-        Text(
-            text = text,
-            style = TextStyle(
-                fontFamily = RetroTheme.pixelFont,
-                fontSize = fontSize,
-                color = Color.White,
-            ),
-        )
-    }
-}
-
-/** Battery glyph, light-on-black: white outline + cap, fill bar by charge. */
+/** Battery glyph: accent outline + cap, fill bar by charge. */
 @Composable
 private fun BatteryIcon(percent: Int) {
     val fillColor = when {
@@ -471,13 +440,13 @@ private fun BatteryIcon(percent: Int) {
         Canvas(modifier = Modifier.size(width = 26.dp, height = 13.dp)) {
             val bodyWidth = size.width * 0.88f
             drawRoundRect(
-                color = Color.White,
+                color = NocturneAccent,
                 size = Size(bodyWidth, size.height),
                 cornerRadius = CornerRadius(3f, 3f),
                 style = Stroke(width = 3f),
             )
             drawRoundRect(
-                color = Color.White,
+                color = NocturneAccent,
                 topLeft = Offset(bodyWidth + 2f, size.height * 0.28f),
                 size = Size(size.width - bodyWidth - 2f, size.height * 0.44f),
                 cornerRadius = CornerRadius(2f, 2f),
@@ -493,6 +462,6 @@ private fun BatteryIcon(percent: Int) {
             )
         }
         Spacer(modifier = Modifier.width(4.dp))
-        PixelText("$percent%", color = Color.White, fontSize = 8.sp)
+        NocturneLabel("$percent%", color = NocturneText, fontSize = 11.sp)
     }
 }
