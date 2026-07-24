@@ -32,6 +32,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.unboundds.companion.memory.MemoryMap
 import com.unboundds.companion.network.RetroArchClient
+import com.unboundds.companion.network.parseReadCoreMemoryResponse
 import com.unboundds.companion.pokemon.BaseStats
 import com.unboundds.companion.pokemon.MoveData
 import com.unboundds.companion.pokemon.NameTables
@@ -47,12 +48,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 private const val OPPONENT_POLL_INTERVAL_MS = 10_000L
+private const val PLAYER_MOVE_POLL_INTERVAL_MS = 1_000L
 private val OpponentBackground = Color(0xFF000000)
 
 /**
  * Opponent party screen: the enemy party in the same left/right banner
  * columns as the hub -- slots 1-3 on the left, 4-6 on the right. Tapping a
- * mon opens the same detail screen used for the player's own party.
+ * mon opens the same detail screen used for the player's own party. Closes
+ * itself automatically once the battle ends and the player takes a step,
+ * detected via a change in the overworld player object's coordinates.
  */
 @Composable
 fun OpponentScreen(onClose: () -> Unit, onDataChanged: () -> Unit) {
@@ -86,6 +90,31 @@ fun OpponentScreen(onClose: () -> Unit, onDataChanged: () -> Unit) {
                 onDataChanged()
             }
             delay(OPPONENT_POLL_INTERVAL_MS)
+        }
+    }
+
+    var battleStartPos by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    LaunchedEffect(isStarted) {
+        if (!isStarted) return@LaunchedEffect
+        val player = map.overworldObjects
+        while (isActive) {
+            val result = client.readCoreMemory(player.firstSlotAddress, player.slotStride)
+            val bytes = (result as? RetroArchClient.Result.Success)
+                ?.let { parseReadCoreMemoryResponse(it.response) }
+            if (bytes != null && bytes.size >= 20) {
+                fun s16(offset: Int): Int {
+                    val v = (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
+                    return v.toShort().toInt()
+                }
+                val pos = s16(16) to s16(18)
+                val baseline = battleStartPos
+                if (baseline == null) {
+                    battleStartPos = pos
+                } else if (pos != baseline) {
+                    onClose()
+                }
+            }
+            delay(PLAYER_MOVE_POLL_INTERVAL_MS)
         }
     }
 

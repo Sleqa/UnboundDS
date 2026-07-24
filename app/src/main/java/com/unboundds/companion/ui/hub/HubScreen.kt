@@ -168,8 +168,10 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
     val baseStats = remember { BaseStats.load(context) }
     val moveData = remember { MoveData.load(context) }
 
+    val battleFlagAnchor = remember { map.anchors.firstOrNull { it.name == "battleStateFlag" } }
+
     var party by remember { mutableStateOf<List<HubMon>>(emptyList()) }
-    var enemyParty by remember { mutableStateOf<List<HubMon>>(emptyList()) }
+    var lastBattleFlag by remember { mutableStateOf(0) }
     var battery by remember { mutableIntStateOf(batteryPercent(context)) }
     var time by remember { mutableStateOf(clockText()) }
     var selectedSlot by remember { mutableStateOf<Int?>(null) }
@@ -212,15 +214,19 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
                 changed = true
             }
             if (!showOpponentScreen) {
-                val updatedEnemyParty = readPartyMons(client, map.enemyParty, baseStats)
-                val oldSpecies = enemyParty.map { it.speciesId }
-                val newSpecies = updatedEnemyParty.map { it.speciesId }
-                if (newSpecies != oldSpecies) {
-                    enemyParty = updatedEnemyParty
-                    if (newSpecies.isNotEmpty()) {
+                val anchor = battleFlagAnchor
+                if (anchor != null) {
+                    val result = client.readCoreMemory(anchor.address, anchor.size)
+                    val flagByte = (result as? RetroArchClient.Result.Success)
+                        ?.let { parseReadCoreMemoryResponse(it.response) }
+                        ?.firstOrNull()
+                        ?.let { it.toInt() and 0xFF }
+                        ?: 0
+                    if (lastBattleFlag == 0 && flagByte != 0) {
                         showOpponentScreen = true
                         changed = true
                     }
+                    lastBattleFlag = flagByte
                 }
             }
             if (changed) {
