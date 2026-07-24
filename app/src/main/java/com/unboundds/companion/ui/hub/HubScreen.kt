@@ -354,7 +354,7 @@ internal fun BannerColumn(
     // instead of spreading all three evenly across the full height.
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom),
+        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom),
     ) {
         repeat(3) { i ->
             mons.getOrNull(i)?.let { mon ->
