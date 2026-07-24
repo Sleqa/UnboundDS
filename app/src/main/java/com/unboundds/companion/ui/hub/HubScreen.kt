@@ -259,19 +259,16 @@ fun HubScreen(onDevToolsRequested: () -> Unit) {
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PixelText(time, color = HubTextLight, fontSize = 9.sp)
+            PixelText(time, color = Color.White, fontSize = 9.sp)
             Spacer(modifier = Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                BatteryIcon(percent = battery)
-                Text(
-                    text = "⚙",
-                    color = GoldHighlight,
-                    fontSize = 17.sp,
-                    modifier = Modifier
-                        .padding(top = 1.dp)
-                        .clickable(onClick = onDevToolsRequested),
-                )
-            }
+            BatteryIcon(percent = battery)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "⚙",
+                color = Color.White,
+                fontSize = 17.sp,
+                modifier = Modifier.clickable(onClick = onDevToolsRequested),
+            )
         }
 
         Spacer(modifier = Modifier.height(2.dp))
@@ -357,7 +354,7 @@ internal fun BannerColumn(
     // instead of spreading all three evenly across the full height.
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom),
     ) {
         repeat(3) { i ->
             mons.getOrNull(i)?.let { mon ->
@@ -496,7 +493,7 @@ fun OutlinedPixelText(
     }
 }
 
-/** Battery glyph, light-on-black: gold outline + cap, fill bar by charge. */
+/** Battery glyph, light-on-black: white outline + cap, fill bar by charge. */
 @Composable
 private fun BatteryIcon(percent: Int) {
     val fillColor = when {
@@ -508,13 +505,13 @@ private fun BatteryIcon(percent: Int) {
         Canvas(modifier = Modifier.size(width = 26.dp, height = 13.dp)) {
             val bodyWidth = size.width * 0.88f
             drawRoundRect(
-                color = GoldOutline,
+                color = Color.White,
                 size = Size(bodyWidth, size.height),
                 cornerRadius = CornerRadius(3f, 3f),
                 style = Stroke(width = 3f),
             )
             drawRoundRect(
-                color = GoldOutline,
+                color = Color.White,
                 topLeft = Offset(bodyWidth + 2f, size.height * 0.28f),
                 size = Size(size.width - bodyWidth - 2f, size.height * 0.44f),
                 cornerRadius = CornerRadius(2f, 2f),
@@ -530,6 +527,6 @@ private fun BatteryIcon(percent: Int) {
             )
         }
         Spacer(modifier = Modifier.width(4.dp))
-        PixelText("$percent%", color = HubTextLight, fontSize = 8.sp)
+        PixelText("$percent%", color = Color.White, fontSize = 8.sp)
     }
 }
